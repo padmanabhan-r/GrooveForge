@@ -1,5 +1,23 @@
+# Internal / tooling
 .claude/
 misc/
 CLAUDE.md
 data/
 tasks/
+
+# Frontend build artifacts & deps
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Backend deps & artifacts
+backend/**/__pycache__/
+**/*.pyc
+**/*.pyo
+backend/.venv/
+backend/*.egg-info/
+backend/.env
+
+# OS
+.DS_Store
