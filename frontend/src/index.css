@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 15% 8%;
+    --foreground: 220 15% 90%;
+
+    --card: 220 15% 12%;
+    --card-foreground: 220 15% 90%;
+
+    --popover: 220 15% 14%;
+    --popover-foreground: 220 15% 90%;
+
+    --primary: 255 85% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 220 15% 80%;
+
+    --muted: 220 10% 18%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 38 95% 55%;
+    --accent-foreground: 220 15% 8%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 16%;
+    --ring: 255 85% 60%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 220 15% 10%;
+    --sidebar-foreground: 220 15% 80%;
+    --sidebar-primary: 255 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 220 15% 90%;
+    --sidebar-border: 220 15% 16%;
+    --sidebar-ring: 255 85% 60%;
+
+    /* Custom tokens */
+    --surface: 220 15% 11%;
+    --surface-raised: 220 15% 14%;
+    --glow-primary: 255 85% 60%;
+    --glow-accent: 38 95% 55%;
+    --node-genre: 255 85% 60%;
+    --node-mood: 330 80% 55%;
+    --node-tempo: 38 95% 55%;
+    --node-key: 170 70% 45%;
+    --node-instrument: 200 80% 55%;
+    --node-theme: 280 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+  }
+
+  .glow-ring {
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.3),
+                0 0 60px hsl(var(--glow-primary) / 0.1);
+  }
+
+  .glow-ring-accent {
+    box-shadow: 0 0 20px hsl(var(--glow-accent) / 0.3),
+                0 0 60px hsl(var(--glow-accent) / 0.1);
+  }
+
+  .node-pulse {
+    animation: node-pulse 3s ease-in-out infinite;
+  }
+
+  .waveform-draw {
+    animation: waveform-draw 1.5s ease-out forwards;
+  }
+
+  .stagger-in {
+    animation: stagger-fade 0.5s ease-out forwards;
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .text-metric {
+    font-family: 'JetBrains Mono', monospace;
+    @apply text-sm tracking-wider;
+  }
+}
+
+@keyframes node-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes node-select {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes waveform-draw {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes stagger-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
