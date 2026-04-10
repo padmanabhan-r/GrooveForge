@@ -1,7 +1,7 @@
 [project]
-name = "backend"
+name = "GrooveForge"
 version = "0.1.0"
-description = "Add your description here"
+description = "GrooveForge"
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.93.0",
