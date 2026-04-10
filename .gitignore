@@ -18,6 +18,7 @@ backend/**/__pycache__/
 backend/.venv/
 backend/*.egg-info/
 backend/.env
+backend/static/audio/
 
 # OS
 .DS_Store
