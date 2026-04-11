@@ -59,7 +59,7 @@ const Index = () => {
           </div>
           <div>
             <h1 className="text-base font-semibold text-foreground tracking-tight">GrooveForge</h1>
-            <p className="text-[10px] text-muted-foreground tracking-widest uppercase">Search by vibe · Generate by blueprint</p>
+            <p className="text-[10px] text-muted-foreground tracking-widest uppercase">The ultimate musician's toolkit</p>
           </div>
         </div>
         <ModeSwitcher active={mode} onChange={setMode} />

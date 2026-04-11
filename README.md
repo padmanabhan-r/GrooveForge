@@ -1,6 +1,9 @@
 # GrooveForge
 
-**Search by vibe. Generate by blueprint.**
+**The ultimate musician's toolkit.**
+**Your blueprint for original music.**
+
+> Search by vibe. Generate by blueprint.
 
 > Music discovery is broken. Song titles tell you nothing about feel. Artist names lock you into what you already know. Playlists are curated by someone else's taste.
 >
@@ -45,24 +48,27 @@ Browser (React 18 + TypeScript + Vite)
 
 Backend (FastAPI)
   POST /api/search
-    └── Turbopuffer hybrid retrieval (ANN + BM25 + metadata filters)
-          └── top-5 to 10 blueprint docs + aggregated traits
+    └── [concurrent] Turbopuffer hybrid retrieval across ALL 5 namespaces
+          └── LLM reads all retrieved rows → synthesizes unified blueprint
 
   POST /api/generate
-    ├── [concurrent] Turbopuffer hybrid retrieval
-    ├── Blueprint aggregation (avg_bpm, mode_key, genre_cluster, mood_cluster)
-    ├── LLM prompt/composition-plan synthesis (grounded in retrieved blueprints only)
+    ├── [concurrent] Turbopuffer retrieval across all 5 namespaces
+    ├── LLM blueprint synthesis (assembles blueprint + composition plan from retrieved data)
     └── ElevenLabs Music API → audio stream
           └── { audio_url, prompt_used, blueprints[], aggregated{} }
 
-Data Pipeline (one-time)
-  MSD + FMA + MusicCaps + LP-MusicCaps subset (5k–20k tracks)
-    → text_description per track
-    → embedding (text-embedding-3-small)
-    → upsert into Turbopuffer namespace: music_blueprints
+Data Pipeline (one-time, already run)
+  5 datasets → 5 Turbopuffer namespaces
+    lp_musiccaps  — 513K records  (captions, mood/genre tags)
+    msd_songs     — 10K records   (BPM, key, mode, artist terms)
+    fma_tracks    — 106K records  (genre labels, language)
+    fma_echonest  — 13K records   (energy, acousticness, valence, tempo)
+    musiccaps     — 5.5K records  (Google human annotations)
+  Embedding: nvidia/llama-embed-nemotron-8b (free, Kaggle T4 GPU, 4096 dims)
+  Fallback:  all-MiniLM-L6-v2 (free, local CPU, 384 dims)
 ```
 
-I/O runs concurrently via `asyncio.gather` — no sequential hops on the hot path.
+All namespace queries run concurrently via `asyncio.gather`. The LLM sees the full retrieved pool and assembles the blueprint — nothing is missed because a field is absent in one table.
 
 ---
 
@@ -148,11 +154,11 @@ ModeTab: Graph | Text | Lyrics | Remix | Artist — always visible
 | Graph UI | react-flow |
 | Animation | Framer Motion |
 | Backend | FastAPI (Python), `uv` |
-| Vector retrieval | Turbopuffer (ANN + BM25 hybrid, metadata filters) |
-| LLM synthesis | OpenAI / Anthropic |
+| Vector retrieval | Turbopuffer — 5 namespaces, ANN + BM25 hybrid, metadata filters |
+| LLM synthesis | Anthropic Claude (blueprint + composition plan synthesis) |
 | Music generation | ElevenLabs Music API (prompt + composition-plan modes) |
-| Embeddings | `text-embedding-3-small` |
-| Data sources | Million Song Dataset, FMA, MusicCaps, LP-MusicCaps |
+| Embeddings | `nvidia/llama-embed-nemotron-8b` (free, Kaggle T4 GPU, 4096 dims) · fallback: `all-MiniLM-L6-v2` (local CPU, 384 dims) |
+| Data sources | LP-MusicCaps-MSD (513K), MillionSongSubset (10K), FMA (106K), MusicCaps (5.5K) |
 | Deployment | Docker + GCP Cloud Run |
 
 ---
@@ -178,7 +184,7 @@ npm run dev
 ```
 ELEVENLABS_API_KEY=...
 TURBOPUFFER_API_KEY=...
-OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
 ```
 
 **Data pipeline** (run once):

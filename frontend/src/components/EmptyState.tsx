@@ -10,6 +10,7 @@ export default function EmptyState({ onSelectPreset }: EmptyStateProps) {
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
       <div className="text-center space-y-6 pointer-events-auto max-w-md px-4">
         <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Your blueprint for original music.</h2>
           <p className="text-muted-foreground text-sm">Click nodes on the graph to build your vibe, or try one of these:</p>
         </div>
         <div className="flex flex-col gap-2">
