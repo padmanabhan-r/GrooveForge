@@ -13,7 +13,6 @@ def _get_openai() -> AsyncOpenAI:
 
 
 def build_prompt(aggregated: AggregatedTraits) -> str:
-    instr = ", ".join(aggregated.instrumentation[:4]) if aggregated.instrumentation else ""
     energy_label = "high energy" if aggregated.energy >= 0.7 else "mid energy" if aggregated.energy >= 0.4 else "low energy"
 
     parts = [
@@ -23,8 +22,6 @@ def build_prompt(aggregated: AggregatedTraits) -> str:
         f"{aggregated.mode_key}",
         energy_label,
     ]
-    if instr:
-        parts.append(instr)
     if aggregated.vocal_type:
         parts.append(aggregated.vocal_type)
 
@@ -69,7 +66,6 @@ async def enrich_prompt(base_prompt: str, aggregated: AggregatedTraits) -> str:
         f"- BPM: {int(aggregated.avg_bpm)}\n"
         f"- Key: {aggregated.mode_key}\n"
         f"- Energy: {aggregated.energy}\n"
-        f"- Instrumentation: {', '.join(aggregated.instrumentation)}\n"
         f"- Vocals: {aggregated.vocal_type or 'instrumental'}\n\n"
         f"Base prompt: {base_prompt}\n\n"
         "Write an enriched music generation prompt:"

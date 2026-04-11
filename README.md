@@ -48,27 +48,28 @@ Browser (React 18 + TypeScript + Vite)
 
 Backend (FastAPI)
   POST /api/search
-    └── [concurrent] Turbopuffer hybrid retrieval across ALL 5 namespaces
+    └── [concurrent] Turbopuffer hybrid retrieval across both namespaces
           └── LLM reads all retrieved rows → synthesizes unified blueprint
 
   POST /api/generate
-    ├── [concurrent] Turbopuffer retrieval across all 5 namespaces
+    ├── [concurrent] Turbopuffer retrieval across both namespaces
     ├── LLM blueprint synthesis (assembles blueprint + composition plan from retrieved data)
     └── ElevenLabs Music API → audio stream
           └── { audio_url, prompt_used, blueprints[], aggregated{} }
 
 Data Pipeline (one-time, already run)
-  5 datasets → 5 Turbopuffer namespaces
-    lp_musiccaps  — 513K records  (captions, mood/genre tags)
-    msd_songs     — 10K records   (BPM, key, mode, artist terms)
-    fma_tracks    — 106K records  (genre labels, language)
-    fma_echonest  — 13K records   (energy, acousticness, valence, tempo)
-    musiccaps     — 5.5K records  (Google human annotations)
-  Embedding: nvidia/llama-embed-nemotron-8b (free, Kaggle T4 GPU, 4096 dims)
-  Fallback:  all-MiniLM-L6-v2 (free, local CPU, 384 dims)
+  Raw tables → 2 PostgreSQL views → 6 Turbopuffer namespaces (2 per embedding model)
+    lp_msd_minilm    — 513,977 records, 384-dim   (MiniLM, CPU — built first)
+    fma_minilm       — 106,574 records, 384-dim   (MiniLM, CPU — built first)
+    lp_msd_nemotron  — 513,977 records, 4096-dim  (llama-nemotron, Kaggle T4 GPU)
+    fma_nemotron     — 106,574 records, 4096-dim  (llama-nemotron, Kaggle T4 GPU)
+    lp_msd_clap      — 513,977 records, 512-dim   (CLAP text encoder — stretch goal)
+    fma_clap         — 106,574 records, 512-dim   (CLAP text encoder — stretch goal)
+  Active pair (config-driven): minilm → nemotron once indexed
+  CLAP pair: audio-to-audio "Sounds Like" mode only
 ```
 
-All namespace queries run concurrently via `asyncio.gather`. The LLM sees the full retrieved pool and assembles the blueprint — nothing is missed because a field is absent in one table.
+The active namespace pair is queried concurrently via `asyncio.gather`. The LLM sees the full retrieved pool and assembles the blueprint — `lp_msd_*` contributes captions and audio structure, `fma_*` contributes genre labels and energy/valence signals. Switch from MiniLM to Nemotron by changing two config values.
 
 ---
 
@@ -154,11 +155,11 @@ ModeTab: Graph | Text | Lyrics | Remix | Artist — always visible
 | Graph UI | react-flow |
 | Animation | Framer Motion |
 | Backend | FastAPI (Python), `uv` |
-| Vector retrieval | Turbopuffer — 5 namespaces, ANN + BM25 hybrid, metadata filters |
+| Vector retrieval | Turbopuffer — 6 namespaces, ANN + BM25 hybrid, metadata filters |
 | LLM synthesis | Anthropic Claude (blueprint + composition plan synthesis) |
 | Music generation | ElevenLabs Music API (prompt + composition-plan modes) |
-| Embeddings | `nvidia/llama-embed-nemotron-8b` (free, Kaggle T4 GPU, 4096 dims) · fallback: `all-MiniLM-L6-v2` (local CPU, 384 dims) |
-| Data sources | LP-MusicCaps-MSD (513K), MillionSongSubset (10K), FMA (106K), MusicCaps (5.5K) |
+| Embeddings | `all-MiniLM-L6-v2` (384-dim, CPU — primary) · `nvidia/llama-embed-nemotron-8b` (4096-dim, Kaggle T4) · CLAP (512-dim, audio-to-audio) |
+| Data sources | LP-MusicCaps-MSD (513K), MSD full (1M), FMA (106K), MusicCaps (5.5K) |
 | Deployment | Docker + GCP Cloud Run |
 
 ---

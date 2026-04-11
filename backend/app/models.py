@@ -3,19 +3,24 @@ from pydantic import BaseModel, Field
 
 class Blueprint(BaseModel):
     id: str
-    source_dataset: str = ""
-    artist: str = ""
-    genre: str
-    subgenre: str = ""
-    bpm: float
-    key: str
-    mode: str
-    energy: float = Field(ge=0.0, le=1.0)
+    source: str = ""           # "lp_msd" or "fma"
+    title: str = ""
+    artist: str = ""           # lp_msd only
+    genre: str = "unknown"
+    genres_all: str = ""       # fma only — comma-separated
+    bpm: float = 120.0
+    key: str = ""              # lp_msd only
+    mode: str = ""             # lp_msd only
+    energy: float = Field(default=0.5, ge=0.0, le=1.0)
     acousticness: float = Field(default=0.0, ge=0.0, le=1.0)
-    instrumentation: list[str] = []
-    themes: list[str] = []
+    valence: float = Field(default=0.5, ge=0.0, le=1.0)
+    danceability: float = Field(default=0.5, ge=0.0, le=1.0)
     vocal_type: str = ""
-    text_description: str
+    mood: str = ""
+    themes: str = ""           # lp_msd only — space-joined theme tokens
+    tags: str = ""             # lp_msd only — all raw tags space-joined
+    caption_summary: str = ""  # lp_msd only
+    text_description: str = "" # full text field used for retrieval
     similarity_score: float = 0.0
 
 
@@ -24,7 +29,6 @@ class AggregatedTraits(BaseModel):
     mode_key: str
     genre_cluster: str
     mood_cluster: str
-    instrumentation: list[str]
     energy: float
     vocal_type: str
 

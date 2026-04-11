@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections import Counter
 
@@ -7,8 +8,6 @@ from app.config import settings
 from app.models import AggregatedTraits, Blueprint, SearchRequest
 
 logger = logging.getLogger(__name__)
-
-NAMESPACE = "music_blueprints"
 
 
 def _get_client() -> turbopuffer.AsyncTurbopuffer:
@@ -35,18 +34,23 @@ def _row_to_blueprint(row, score: float = 0.0) -> Blueprint:
     attrs: dict = row.model_extra or {}
     return Blueprint(
         id=str(row.id),
-        source_dataset=attrs.get("source_dataset", ""),
+        source=attrs.get("source", ""),
+        title=attrs.get("title", ""),
         artist=attrs.get("artist", ""),
-        genre=attrs.get("genre", "unknown"),
-        subgenre=attrs.get("subgenre", ""),
-        bpm=float(attrs.get("bpm", 120)),
-        key=attrs.get("key", "C"),
-        mode=attrs.get("mode", "major"),
-        energy=float(attrs.get("energy", 0.5)),
-        acousticness=float(attrs.get("acousticness", 0.0)),
-        instrumentation=attrs.get("instrumentation", []),
-        themes=attrs.get("themes", []),
+        genre=attrs.get("genre") or "unknown",
+        genres_all=attrs.get("genres_all", ""),
+        bpm=float(attrs.get("bpm") or 120.0),
+        key=attrs.get("key", ""),
+        mode=attrs.get("mode", ""),
+        energy=float(attrs.get("energy") or 0.5),
+        acousticness=float(attrs.get("acousticness") or 0.0),
+        valence=float(attrs.get("valence") or 0.5),
+        danceability=float(attrs.get("danceability") or 0.5),
         vocal_type=attrs.get("vocal_type", ""),
+        mood=attrs.get("mood", ""),
+        themes=attrs.get("themes", ""),
+        tags=attrs.get("tags", ""),
+        caption_summary=attrs.get("caption_summary", ""),
         text_description=attrs.get("text", ""),
         similarity_score=round(score, 4),
     )
@@ -59,31 +63,25 @@ def aggregate_blueprints(blueprints: list[Blueprint]) -> AggregatedTraits:
             mode_key="C major",
             genre_cluster="unknown",
             mood_cluster="unknown",
-            instrumentation=[],
             energy=0.5,
             vocal_type="",
         )
 
     avg_bpm = round(sum(b.bpm for b in blueprints) / len(blueprints), 1)
 
-    key_counter = Counter(f"{b.key} {b.mode}" for b in blueprints)
-    mode_key = key_counter.most_common(1)[0][0]
+    key_counter = Counter(
+        f"{b.key} {b.mode}" for b in blueprints if b.key and b.mode
+    )
+    mode_key = key_counter.most_common(1)[0][0] if key_counter else "unknown"
 
-    genre_counter = Counter(b.genre for b in blueprints)
-    genre_cluster = genre_counter.most_common(1)[0][0]
+    genre_counter = Counter(b.genre for b in blueprints if b.genre)
+    genre_cluster = genre_counter.most_common(1)[0][0] if genre_counter else "unknown"
 
-    theme_counter: Counter = Counter()
+    mood_counter: Counter = Counter()
     for b in blueprints:
-        theme_counter.update(b.themes)
-    mood_cluster = theme_counter.most_common(1)[0][0] if theme_counter else "unknown"
-
-    seen: set[str] = set()
-    instrumentation: list[str] = []
-    for b in blueprints:
-        for inst in b.instrumentation:
-            if inst not in seen:
-                seen.add(inst)
-                instrumentation.append(inst)
+        for token in b.mood.split():
+            mood_counter[token] += 1
+    mood_cluster = mood_counter.most_common(1)[0][0] if mood_counter else "unknown"
 
     avg_energy = round(sum(b.energy for b in blueprints) / len(blueprints), 2)
 
@@ -95,50 +93,81 @@ def aggregate_blueprints(blueprints: list[Blueprint]) -> AggregatedTraits:
         mode_key=mode_key,
         genre_cluster=genre_cluster,
         mood_cluster=mood_cluster,
-        instrumentation=instrumentation[:8],
         energy=avg_energy,
         vocal_type=vocal_type,
     )
 
 
-async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
-    query_text = _build_query_text(request)
-    logger.info("Turbopuffer query: %r top_k=%d", query_text, request.top_k)
-
-    client = _get_client()
-    ns = client.namespace(NAMESPACE)
-
-    filters: list = []
-    if request.bpm_lower is not None:
-        filters.append(["bpm", "Gte", int(request.bpm_lower)])
-    if request.bpm_upper is not None:
-        filters.append(["bpm", "Lte", int(request.bpm_upper)])
-    if request.vocal_type:
-        filters.append(["vocal_type", "Eq", request.vocal_type])
-
+async def _query_namespace(
+    client: turbopuffer.AsyncTurbopuffer,
+    namespace: str,
+    query_text: str,
+    top_k: int,
+    filters: list,
+) -> list[Blueprint]:
+    ns = client.namespace(namespace)
     query_kwargs: dict = {
         "rank_by": ["BM25", "text", query_text],
-        "top_k": request.top_k,
+        "top_k": top_k,
         "include_attributes": True,
     }
     if filters:
         query_kwargs["filters"] = ["And", filters] if len(filters) > 1 else filters[0]
+    try:
+        response = await ns.query(**query_kwargs)
+        return [_row_to_blueprint(row) for row in (response.rows or [])]
+    except Exception:
+        logger.exception("Turbopuffer query failed for namespace %s", namespace)
+        return []
 
-    response = await ns.query(**query_kwargs)
-    rows = response.rows or []
 
-    return [_row_to_blueprint(row) for row in rows]
+async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
+    query_text = _build_query_text(request)
+    logger.info(
+        "Turbopuffer query: %r top_k=%d namespaces=[%s, %s]",
+        query_text,
+        request.top_k,
+        settings.active_ns_lp,
+        settings.active_ns_fma,
+    )
+
+    filters: list = []
+    if request.bpm_lower is not None:
+        filters.append(["bpm", "Gte", float(request.bpm_lower)])
+    if request.bpm_upper is not None:
+        filters.append(["bpm", "Lte", float(request.bpm_upper)])
+    if request.vocal_type:
+        filters.append(["vocal_type", "Eq", request.vocal_type])
+
+    client = _get_client()
+    lp_results, fma_results = await asyncio.gather(
+        _query_namespace(client, settings.active_ns_lp, query_text, request.top_k, filters),
+        _query_namespace(client, settings.active_ns_fma, query_text, request.top_k, filters),
+    )
+
+    # Merge, deduplicate by id, sort by similarity (higher BM25 rank = lower dist)
+    seen: set[str] = set()
+    merged: list[Blueprint] = []
+    for bp in lp_results + fma_results:
+        if bp.id not in seen:
+            seen.add(bp.id)
+            merged.append(bp)
+
+    return merged[: request.top_k]
 
 
 async def search_by_artist(artist: str, top_k: int = 8) -> list[Blueprint]:
     client = _get_client()
-    ns = client.namespace(NAMESPACE)
-
-    response = await ns.query(
-        rank_by=["BM25", "text", artist],
-        filters=["artist", "Eq", artist],
-        top_k=top_k,
-        include_attributes=True,
+    lp_results, fma_results = await asyncio.gather(
+        _query_namespace(client, settings.active_ns_lp, artist, top_k, []),
+        _query_namespace(client, settings.active_ns_fma, artist, top_k, []),
     )
-    rows = response.rows or []
-    return [_row_to_blueprint(row) for row in rows]
+
+    seen: set[str] = set()
+    merged: list[Blueprint] = []
+    for bp in lp_results + fma_results:
+        if bp.id not in seen:
+            seen.add(bp.id)
+            merged.append(bp)
+
+    return merged[:top_k]
