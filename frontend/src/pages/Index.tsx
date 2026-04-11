@@ -97,75 +97,70 @@ const Index = () => {
         <ModeSwitcher active={mode} onChange={setMode} />
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative z-10">
-        {/* Canvas Area */}
-        <div className="flex-1 relative p-4">
-          {mode === 'graph' && (
-            <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
-          )}
-          {mode !== 'graph' && (
-            <div className="max-w-2xl mx-auto mt-12">
-              <InputPanels mode={mode} onGenerate={handleGenerate} />
-            </div>
-          )}
-
-          {/* Generating overlay */}
-          {appState === 'generating' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
-              <GeneratingOverlay />
-            </div>
-          )}
-
-          {/* Error state */}
-          {appState === 'error' && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-2 rounded-lg z-20">
-              {errorMsg}
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar */}
+      {/* Main Content — full-width canvas */}
+      <div className="flex-1 relative overflow-hidden z-10">
         {mode === 'graph' && (
-          <div className="w-80 border-l border-border/50 p-4 flex flex-col gap-4 overflow-y-auto">
-            <VibePanel
-              selectedNodes={selectedNodes}
-              onRemoveNode={toggleNode}
-              onGenerate={handleGenerate}
-              isGenerating={appState === 'generating'}
-            />
+          <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
+        )}
+        {mode !== 'graph' && (
+          <div className="max-w-2xl mx-auto mt-12 px-4">
+            <InputPanels mode={mode} onGenerate={handleGenerate} />
+          </div>
+        )}
 
-            {(appState === 'selecting' || appState === 'error') && selectedNodes.length >= 2 && (
+        {/* Generating overlay */}
+        {appState === 'generating' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
+            <GeneratingOverlay />
+          </div>
+        )}
+
+        {/* Error state */}
+        {appState === 'error' && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-2 rounded-lg z-20">
+            {errorMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Controls Bar — graph mode, nodes selected */}
+      {mode === 'graph' && selectedNodes.length > 0 && (
+        <div className="border-t border-border/50 px-5 py-3 flex items-center gap-4 flex-wrap relative z-10 bg-background/90 backdrop-blur-sm">
+          <VibePanel
+            selectedNodes={selectedNodes}
+            onRemoveNode={toggleNode}
+            onGenerate={handleGenerate}
+            isGenerating={appState === 'generating'}
+            horizontal
+          />
+
+          {selectedNodes.length >= 2 && (
+            <div className="flex items-center gap-2 border-l border-border/40 pl-4">
               <AggregatedProfile
                 avgBpm={aggregated.avg_bpm || 0}
                 dominantKey={aggregated.mode_key || '—'}
                 genreCluster={aggregated.genre_cluster || '—'}
                 moodCluster={aggregated.mood_cluster || '—'}
+                horizontal
               />
-            )}
+            </div>
+          )}
 
-            {appState === 'results' && (
-              <>
-                <AggregatedProfile
-                  avgBpm={aggregated.avg_bpm}
-                  dominantKey={aggregated.mode_key}
-                  genreCluster={aggregated.genre_cluster}
-                  moodCluster={aggregated.mood_cluster}
-                />
-                <RemixControls onRegenerate={handleRegenerate} />
-                {promptUsed && (
-                  <div className="glass-panel p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Prompt Used</p>
-                    <p className="text-xs text-foreground/70 leading-relaxed">{promptUsed}</p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+          {appState === 'results' && (
+            <div className="flex items-center gap-3 border-l border-border/40 pl-4 ml-auto">
+              <RemixControls onRegenerate={handleRegenerate} />
+              {promptUsed && (
+                <p className="text-xs text-foreground/50 max-w-xs truncate hidden lg:block" title={promptUsed}>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mr-1">Prompt:</span>
+                  {promptUsed}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Bottom Section - Results */}
+      {/* Bottom Section - Audio + Blueprint trail */}
       {appState === 'results' && (
         <div className="border-t border-border/50 p-4 space-y-4 relative z-10">
           <AudioPlayer

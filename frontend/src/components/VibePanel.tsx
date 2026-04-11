@@ -19,10 +19,45 @@ interface VibePanelProps {
   onRemoveNode: (id: string) => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  horizontal?: boolean;
 }
 
-export default function VibePanel({ selectedNodes, onRemoveNode, onGenerate, isGenerating }: VibePanelProps) {
+export default function VibePanel({ selectedNodes, onRemoveNode, onGenerate, isGenerating, horizontal }: VibePanelProps) {
   if (selectedNodes.length === 0) return null;
+
+  if (horizontal) {
+    return (
+      <div className="flex items-center gap-3 flex-wrap animate-fade-in">
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider whitespace-nowrap">Vibe</span>
+        <div className="flex flex-wrap gap-1.5">
+          {selectedNodes.map(id => {
+            const root = getRootForNode(id);
+            const colorClass = root ? (ROOT_COLORS[root.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
+            return (
+              <button
+                key={id}
+                onClick={() => onRemoveNode(id)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all hover:scale-105 ${colorClass}`}
+              >
+                {getNodeLabel(id)}
+                <X size={10} className="opacity-60" />
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={onGenerate}
+          disabled={isGenerating || selectedNodes.length < 2}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm
+            hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed
+            flex items-center gap-2 glow-ring whitespace-nowrap"
+        >
+          <Sparkles size={14} />
+          {isGenerating ? 'Generating…' : 'Generate Track'}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-panel p-4 animate-fade-in">

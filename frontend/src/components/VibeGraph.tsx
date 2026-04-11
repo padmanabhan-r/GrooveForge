@@ -1,5 +1,6 @@
 // Expanding bubble network — sector-based layout: each root owns a guaranteed arc slice,
 // so expanding multiple roots simultaneously never causes cross-root overlap.
+// Coordinate space scaled 3× for density: viewBox "-75 -75 450 450", center = 150,150
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { roots, BubbleNodeDef } from '@/data/graphNodes';
@@ -9,18 +10,21 @@ interface VibeGraphProps {
   onToggleNode: (id: string) => void;
 }
 
-// ── Layout constants (viewBox "-25 -25 150 150", center = 50,50) ─────────────
-const CX = 50, CY = 50;
-const ROOT_DIST = 23;       // center → root ring
-const L1_DIST   = 47;       // center → L1 ring  (sector-guaranteed)
-const L2_RING   = 15;       // L1 node → L2 fan distance
-const ROOT_R    = 5.5;
-const L1_R      = 2.7;
-const L2_R      = 1.8;
+// ── Layout constants (viewBox "-75 -75 450 450", center = 150,150) ────────────
+const CX = 150, CY = 150;
+const ROOT_DIST = 69;     // center → root ring
+const L1_DIST   = 141;    // center → L1 ring  (sector-guaranteed, no cross-root overlap)
+const L2_RING   = 60;     // L1 → L2 fan distance  (larger for dense sub-genres)
+const ROOT_R    = 16.5;
+const L1_R      = 8.1;
+const L2_R      = 5.4;
 
-// Each of the 7 roots gets an equal sector; children fill 84% of it
+// Each root gets an equal sector; children fill 84% of it
 const SECTOR      = (2 * Math.PI) / roots.length;
 const SECTOR_FILL = 0.84;
+
+// Max spread (radians) for L2 fans — prevents fans from wrapping too far
+const MAX_L2_SPREAD = 2.2;
 
 type Pt = { x: number; y: number };
 
@@ -45,11 +49,11 @@ function l1Positions(rootIdx: number, count: number) {
   });
 }
 
-// L2: adaptive fan radiating outward from the L1 node
+// L2: adaptive fan radiating outward from the L1 node, capped to avoid wrapping
 function l2Positions(l1Angle: number, l1Pos: Pt, count: number) {
   if (count === 0) return [] as Array<{ angle: number; pos: Pt }>;
   if (count === 1) return [{ angle: l1Angle, pos: polar(l1Pos.x, l1Pos.y, L2_RING, l1Angle) }];
-  const spread = (L2_R * 3.4 * (count - 1)) / L2_RING;
+  const spread = Math.min((L2_R * 3.4 * (count - 1)) / L2_RING, MAX_L2_SPREAD);
   return Array.from({ length: count }, (_, i) => {
     const angle = l1Angle - spread / 2 + (spread / (count - 1)) * i;
     return { angle, pos: polar(l1Pos.x, l1Pos.y, L2_RING, angle) };
@@ -74,7 +78,7 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, labelDir, fontSize,
   const fl = selected ? AL : (hovered ? 56 : 44);
   const glow = selected ? hsl(AH, 90, 55) : hsl(hue, 70, 60);
 
-  const lOff = r + 3.2;
+  const lOff = r + 9.6;
   const lx   = pos.x + lOff * Math.cos(labelDir);
   const ly   = pos.y + lOff * Math.sin(labelDir);
   const anch = Math.abs(Math.cos(labelDir)) < 0.28 ? 'middle'
@@ -93,8 +97,8 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, labelDir, fontSize,
     >
       {selected && (
         <circle cx={pos.x} cy={pos.y} r={r * 2.1}
-          fill="none" stroke={hsl(AH, 90, 60, 0.3)} strokeWidth={0.5}
-          style={{ filter: `drop-shadow(0 0 3px ${glow})` }} />
+          fill="none" stroke={hsl(AH, 90, 60, 0.3)} strokeWidth={1.5}
+          style={{ filter: `drop-shadow(0 0 9px ${glow})` }} />
       )}
       {hovered && !selected && (
         <circle cx={pos.x} cy={pos.y} r={r * 1.7} fill={hsl(hue, 60, 40, 0.15)} />
@@ -102,8 +106,8 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, labelDir, fontSize,
       <circle cx={pos.x} cy={pos.y} r={r}
         fill={hsl(fh, fs, fl)}
         stroke={hsl(fh, fs + 5, selected ? 72 : hovered ? 76 : 58)}
-        strokeWidth={selected ? 0.25 : 0.12}
-        style={{ filter: selected ? `drop-shadow(0 0 4px ${glow})` : undefined, transition: 'fill 0.25s' }}
+        strokeWidth={selected ? 0.75 : 0.36}
+        style={{ filter: selected ? `drop-shadow(0 0 12px ${glow})` : undefined, transition: 'fill 0.25s' }}
       />
       <ellipse cx={pos.x - r * 0.26} cy={pos.y - r * 0.28}
         rx={r * 0.5} ry={r * 0.34}
@@ -176,8 +180,8 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
   }), []);
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-xl">
-      <svg viewBox="-25 -25 150 150" className="w-full h-full" style={{ minHeight: '420px' }}>
+    <div className="w-full h-full relative overflow-hidden">
+      <svg viewBox="-75 -75 450 450" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
         <defs>
           <radialGradient id="vg-bg" cx="50%" cy="50%" r="50%">
             <stop offset="0%"   stopColor="rgba(99,102,241,0.09)" />
@@ -185,7 +189,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
           </radialGradient>
         </defs>
 
-        {selectionCount > 0 && <circle cx={CX} cy={CY} r={22} fill="url(#vg-bg)" />}
+        {selectionCount > 0 && <circle cx={CX} cy={CY} r={66} fill="url(#vg-bg)" />}
 
         {/* ── Spoke lines: center → root ── */}
         {layout.map(({ root, rootPos: rp }) => {
@@ -195,7 +199,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
             <line key={`spoke-${root.id}`}
               x1={CX} y1={CY} x2={rp.x} y2={rp.y}
               stroke={hsl(root.hue, 40, 42, dimmed ? 0.05 : isExp ? 0.38 : 0.13)}
-              strokeWidth={isExp ? 0.22 : 0.1}
+              strokeWidth={isExp ? 0.66 : 0.3}
               style={{ transition: 'all 0.35s' }} />
           );
         })}
@@ -207,7 +211,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               x1={rp.x} y1={rp.y} x2={l1p.x} y2={l1p.y}
               stroke={hsl(root.hue, 52, 56, selectedNodes.includes(l1.id) ? 0.7 : 0.28)}
-              strokeWidth={0.18} />
+              strokeWidth={0.54} />
           ))
         )}
 
@@ -219,7 +223,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 x1={l1p.x} y1={l1p.y} x2={l2p.x} y2={l2p.y}
                 stroke={hsl(root.hue, 46, 56, selectedNodes.includes(l2n.id) ? 0.6 : 0.2)}
-                strokeWidth={0.13} />
+                strokeWidth={0.39} />
             ))
           )
         )}
@@ -232,16 +236,16 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               style={{ transformOrigin: `${CX}px ${CY}px` }}
             >
-              <circle cx={CX} cy={CY} r={7.5}
-                fill={hsl(260, 62, 17)} stroke={hsl(260, 72, 55, 0.75)} strokeWidth={0.28}
-                style={{ filter: 'drop-shadow(0 0 7px rgba(99,102,241,0.55))' }} />
-              <text x={CX} y={CY - 1.6} textAnchor="middle" dominantBaseline="central"
-                fontSize={2.8} fontFamily="'JetBrains Mono', monospace"
+              <circle cx={CX} cy={CY} r={22.5}
+                fill={hsl(260, 62, 17)} stroke={hsl(260, 72, 55, 0.75)} strokeWidth={0.84}
+                style={{ filter: 'drop-shadow(0 0 21px rgba(99,102,241,0.55))' }} />
+              <text x={CX} y={CY - 4.8} textAnchor="middle" dominantBaseline="central"
+                fontSize={8.4} fontFamily="'JetBrains Mono', monospace"
                 fill={hsl(260, 70, 82)} fontWeight={700}>
                 {selectionCount}
               </text>
-              <text x={CX} y={CY + 3.0} textAnchor="middle" dominantBaseline="central"
-                fontSize={1.5} fontFamily="'Inter', sans-serif" fill={hsl(260, 38, 66)}>
+              <text x={CX} y={CY + 9.0} textAnchor="middle" dominantBaseline="central"
+                fontSize={4.5} fontFamily="'Inter', sans-serif" fill={hsl(260, 38, 66)}>
                 traits
               </text>
             </motion.g>
@@ -266,16 +270,16 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                 {isExp && (
                   <circle cx={rp.x} cy={rp.y} r={ROOT_R * 1.75}
                     fill="none" stroke={hsl(H, 62, 58, 0.32)}
-                    strokeWidth={0.14} strokeDasharray="0.9 1.4">
+                    strokeWidth={0.42} strokeDasharray="2.7 4.2">
                     <animateTransform attributeName="transform" type="rotate"
                       from={`0 ${rp.x} ${rp.y}`} to={`360 ${rp.x} ${rp.y}`}
                       dur="14s" repeatCount="indefinite" />
                   </circle>
                 )}
-                {/* Idle pulse ring on root when collapsed */}
+                {/* Idle pulse ring on collapsed root */}
                 {!isExp && !dimmed && (
                   <circle cx={rp.x} cy={rp.y} r={ROOT_R * 1.5}
-                    fill="none" stroke={hsl(H, 55, 55, 0.18)} strokeWidth={0.12}>
+                    fill="none" stroke={hsl(H, 55, 55, 0.18)} strokeWidth={0.36}>
                     <animate attributeName="r"
                       values={`${ROOT_R * 1.3};${ROOT_R * 1.65};${ROOT_R * 1.3}`}
                       dur="3.5s" repeatCount="indefinite" />
@@ -286,20 +290,18 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                 <circle cx={rp.x} cy={rp.y} r={ROOT_R}
                   fill={hsl(H, isExp ? 66 : 52, dimmed ? 27 : isExp ? 40 : 34)}
                   stroke={hsl(H, 62, dimmed ? 38 : 66)}
-                  strokeWidth={isExp ? 0.32 : 0.16}
+                  strokeWidth={isExp ? 0.96 : 0.48}
                   style={{
-                    filter: isExp ? `drop-shadow(0 0 5px ${hsl(H, 72, 55, 0.55)})` : undefined,
+                    filter: isExp ? `drop-shadow(0 0 15px ${hsl(H, 72, 55, 0.55)})` : undefined,
                     transition: 'all 0.3s',
                   }}
                 />
-                {/* Emoji icon inside bubble */}
-                <text x={rp.x} y={rp.y - 1.0} textAnchor="middle" dominantBaseline="central"
-                  fontSize={3.4} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                <text x={rp.x} y={rp.y - 3.0} textAnchor="middle" dominantBaseline="central"
+                  fontSize={10.2} style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {root.icon}
                 </text>
-                {/* Category label below bubble */}
-                <text x={rp.x} y={rp.y + ROOT_R + 3.2} textAnchor="middle"
-                  fontSize={2.2} fontFamily="'Inter', sans-serif"
+                <text x={rp.x} y={rp.y + ROOT_R + 9.6} textAnchor="middle"
+                  fontSize={6.6} fontFamily="'Inter', sans-serif"
                   fontWeight={isExp ? 600 : 400}
                   fill={hsl(H, 18, dimmed ? 38 : 76)}
                   style={{ pointerEvents: 'none', userSelect: 'none', transition: 'fill 0.3s' }}>
@@ -316,7 +318,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                       selected={selectedNodes.includes(l1.id)}
                       hovered={hovered === l1.id}
                       label={l1.label} labelDir={l1a}
-                      fontSize={1.9} delay={li * 0.05}
+                      fontSize={5.7} delay={li * 0.05}
                       onClick={() => toggleL1(l1)}
                       onHover={(v) => setHovered(v ? l1.id : null)}
                     />
@@ -328,7 +330,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                           selected={selectedNodes.includes(l2n.id)}
                           hovered={hovered === l2n.id}
                           label={l2n.label} labelDir={l2a}
-                          fontSize={1.55} delay={l2i * 0.06}
+                          fontSize={4.65} delay={l2i * 0.04}
                           onClick={() => onToggleNode(l2n.id)}
                           onHover={(v) => setHovered(v ? l2n.id : null)}
                         />
@@ -343,7 +345,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
       </svg>
 
       {!anyExpanded && (
-        <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
+        <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none">
           <p className="text-xs text-muted-foreground/35 tracking-widest uppercase">
             Click a category to explore
           </p>
