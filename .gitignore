@@ -3,6 +3,7 @@
 misc/
 CLAUDE.md
 data/
+!frontend/src/data/
 tasks/
 
 # Frontend build artifacts & deps

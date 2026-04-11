@@ -7,7 +7,6 @@ import BlueprintTrail from '@/components/BlueprintTrail';
 import AudioPlayer from '@/components/AudioPlayer';
 import AggregatedProfile from '@/components/AggregatedProfile';
 import RemixControls from '@/components/RemixControls';
-import EmptyState from '@/components/EmptyState';
 import GeneratingOverlay from '@/components/GeneratingOverlay';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import { getNodeLabel, compileQuery } from '@/data/graphNodes';
@@ -103,15 +102,7 @@ const Index = () => {
         {/* Canvas Area */}
         <div className="flex-1 relative p-4">
           {mode === 'graph' && (
-            <>
-              <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
-              {appState === 'empty' && selectedNodes.length === 0 && (
-                <EmptyState onSelectPreset={(ids) => {
-                  setSelectedNodes(ids);
-                  setAppState('selecting');
-                }} />
-              )}
-            </>
+            <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
           )}
           {mode !== 'graph' && (
             <div className="max-w-2xl mx-auto mt-12">
