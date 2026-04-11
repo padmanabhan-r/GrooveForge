@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 
 interface AudioPlayerProps {
@@ -6,31 +6,77 @@ interface AudioPlayerProps {
   blueprintCount: number;
   trackKey: string;
   trackBpm: number;
+  audioUrl?: string;
 }
 
-export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, trackBpm }: AudioPlayerProps) {
+export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, trackBpm, audioUrl }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Generate mock waveform bars
+  // Generate waveform bars once
   const bars = useMemo(() => {
     return Array.from({ length: 80 }, (_, i) => {
       const x = i / 80;
-      // Create a natural-looking waveform shape
       const base = Math.sin(x * Math.PI) * 0.6;
       const detail = Math.sin(x * 12) * 0.15 + Math.sin(x * 25) * 0.1 + Math.sin(x * 47) * 0.08;
       return Math.max(0.08, Math.min(1, base + detail + 0.3 + (Math.random() * 0.1)));
     });
   }, []);
 
-  // Simulate playback
+  // Reset when a new track arrives
+  useEffect(() => {
+    setIsPlaying(false);
+    setProgress(0);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, [audioUrl]);
+
+  // Sync real audio progress
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onTimeUpdate = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', onEnded);
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [audioUrl]);
+
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) {
-      const interval = setInterval(() => {
+    if (audioUrl && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    // Simulated playback fallback (no audioUrl)
+    if (isPlaying) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      intervalRef.current = setInterval(() => {
         setProgress(p => {
           if (p >= 100) {
-            clearInterval(interval);
+            if (intervalRef.current) clearInterval(intervalRef.current);
             setIsPlaying(false);
             return 0;
           }
@@ -40,8 +86,21 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
     }
   };
 
+  const handleScrub = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    setProgress(pct);
+    if (audioUrl && audioRef.current && audioRef.current.duration) {
+      audioRef.current.currentTime = (pct / 100) * audioRef.current.duration;
+    }
+  };
+
   return (
     <div className="glass-panel p-6 space-y-4 animate-slide-up">
+      {audioUrl && (
+        <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      )}
+
       {/* Waveform */}
       <div className="relative h-24 flex items-end gap-[2px] overflow-hidden rounded-lg waveform-draw">
         {bars.map((h, i) => {
@@ -53,15 +112,12 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
               className="flex-1 rounded-t-sm transition-colors duration-150"
               style={{
                 height: `${h * 100}%`,
-                backgroundColor: isPast
-                  ? 'hsl(255 85% 60%)'
-                  : 'hsl(220 15% 22%)',
+                backgroundColor: isPast ? 'hsl(255 85% 60%)' : 'hsl(220 15% 22%)',
                 opacity: isPast ? 1 : 0.6,
               }}
             />
           );
         })}
-        {/* Progress line */}
         <div
           className="absolute top-0 bottom-0 w-[2px] bg-accent shadow-lg shadow-accent/50 transition-all duration-100"
           style={{ left: `${progress}%` }}
@@ -71,7 +127,13 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
       {/* Controls + Metadata */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => {
+              if (audioRef.current) audioRef.current.currentTime = 0;
+              setProgress(0);
+            }}
+          >
             <SkipBack size={18} />
           </button>
           <button
@@ -103,10 +165,7 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
       {/* Scrubber */}
       <div
         className="h-1 rounded-full bg-secondary cursor-pointer group"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setProgress(((e.clientX - rect.left) / rect.width) * 100);
-        }}
+        onClick={handleScrub}
       >
         <div
           className="h-full rounded-full bg-primary transition-all duration-100 relative"

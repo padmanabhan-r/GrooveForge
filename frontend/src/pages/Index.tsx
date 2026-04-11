@@ -10,15 +10,28 @@ import RemixControls from '@/components/RemixControls';
 import EmptyState from '@/components/EmptyState';
 import GeneratingOverlay from '@/components/GeneratingOverlay';
 import AnimatedBackground from '@/components/AnimatedBackground';
-import { mockBlueprints, mockAggregatedProfile } from '@/data/mockBlueprints';
-import { graphNodes } from '@/data/graphNodes';
+import { getNodeLabel, compileQuery } from '@/data/graphNodes';
+import {
+  Blueprint, AggregatedTraits, GenerateResponse,
+  generateTrack, resolveAudioUrl,
+} from '@/lib/api';
 
-type AppState = 'empty' | 'selecting' | 'generating' | 'results';
+type AppState = 'empty' | 'selecting' | 'generating' | 'results' | 'error';
+
+const EMPTY_AGGREGATED: AggregatedTraits = {
+  avg_bpm: 0, mode_key: '', genre_cluster: '', mood_cluster: '', energy: 0, vocal_type: '',
+};
 
 const Index = () => {
   const [mode, setMode] = useState<AppMode>('graph');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [appState, setAppState] = useState<AppState>('empty');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
+  const [aggregated, setAggregated] = useState<AggregatedTraits>(EMPTY_AGGREGATED);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [promptUsed, setPromptUsed] = useState('');
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev => {
@@ -27,30 +40,50 @@ const Index = () => {
         if (next.length === 0) setAppState('empty');
         return next;
       }
-      if (prev.length >= 4) return prev;
       setAppState('selecting');
       return [...prev, id];
     });
   }, []);
 
-  const selectPreset = useCallback((nodeIds: string[]) => {
-    setSelectedNodes(nodeIds);
-    setAppState('selecting');
-  }, []);
-
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
+    if (selectedNodes.length === 0) return;
     setAppState('generating');
-    setTimeout(() => setAppState('results'), 2500);
-  }, []);
+    setErrorMsg('');
+
+    const query = compileQuery(selectedNodes);
+    try {
+      const result: GenerateResponse = await generateTrack({
+        vibes: query.vibes,
+        blueprints: [],        // let backend do retrieval
+        bpm_lower: query.bpm_lower,
+        bpm_upper: query.bpm_upper,
+        lyrics: '',
+        mode: 'prompt',
+      });
+      setBlueprints(result.blueprints);
+      setAggregated(result.aggregated);
+      setAudioUrl(resolveAudioUrl(result.audio_url));
+      setPromptUsed(result.prompt_used);
+      setAppState('results');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Generation failed');
+      setAppState('error');
+    }
+  }, [selectedNodes]);
+
+  const handleRegenerate = useCallback(() => {
+    handleGenerate();
+  }, [handleGenerate]);
 
   const vibeSummary = selectedNodes
-    .map(id => graphNodes.find(n => n.id === id)?.label)
+    .map(id => getNodeLabel(id))
     .filter(Boolean)
     .join(' · ');
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
       <AnimatedBackground isPlaying={appState === 'results'} />
+
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-border/50">
         <div className="flex items-center gap-3">
@@ -71,12 +104,12 @@ const Index = () => {
         <div className="flex-1 relative p-4">
           {mode === 'graph' && (
             <>
-              <VibeGraph
-                selectedNodes={selectedNodes}
-                onToggleNode={toggleNode}
-              />
+              <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
               {appState === 'empty' && selectedNodes.length === 0 && (
-                <EmptyState onSelectPreset={selectPreset} />
+                <EmptyState onSelectPreset={(ids) => {
+                  setSelectedNodes(ids);
+                  setAppState('selecting');
+                }} />
               )}
             </>
           )}
@@ -92,6 +125,13 @@ const Index = () => {
               <GeneratingOverlay />
             </div>
           )}
+
+          {/* Error state */}
+          {appState === 'error' && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-2 rounded-lg z-20">
+              {errorMsg}
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar */}
@@ -104,12 +144,31 @@ const Index = () => {
               isGenerating={appState === 'generating'}
             />
 
-            {appState === 'selecting' && selectedNodes.length >= 2 && (
-              <AggregatedProfile {...mockAggregatedProfile} />
+            {(appState === 'selecting' || appState === 'error') && selectedNodes.length >= 2 && (
+              <AggregatedProfile
+                avgBpm={aggregated.avg_bpm || 0}
+                dominantKey={aggregated.mode_key || '—'}
+                genreCluster={aggregated.genre_cluster || '—'}
+                moodCluster={aggregated.mood_cluster || '—'}
+              />
             )}
 
             {appState === 'results' && (
-              <RemixControls onRegenerate={handleGenerate} />
+              <>
+                <AggregatedProfile
+                  avgBpm={aggregated.avg_bpm}
+                  dominantKey={aggregated.mode_key}
+                  genreCluster={aggregated.genre_cluster}
+                  moodCluster={aggregated.mood_cluster}
+                />
+                <RemixControls onRegenerate={handleRegenerate} />
+                {promptUsed && (
+                  <div className="glass-panel p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Prompt Used</p>
+                    <p className="text-xs text-foreground/70 leading-relaxed">{promptUsed}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -120,11 +179,12 @@ const Index = () => {
         <div className="border-t border-border/50 p-4 space-y-4 relative z-10">
           <AudioPlayer
             vibeSummary={vibeSummary || 'Custom Vibe'}
-            blueprintCount={mockBlueprints.length}
-            trackKey={mockAggregatedProfile.dominantKey}
-            trackBpm={mockAggregatedProfile.avgBpm}
+            blueprintCount={blueprints.length}
+            trackKey={aggregated.mode_key}
+            trackBpm={aggregated.avg_bpm}
+            audioUrl={audioUrl}
           />
-          <BlueprintTrail blueprints={mockBlueprints} />
+          <BlueprintTrail blueprints={blueprints} />
         </div>
       )}
     </div>

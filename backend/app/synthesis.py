@@ -1,6 +1,6 @@
 import logging
 
-from openai import AsyncOpenAI
+import google.generativeai as genai
 
 from app.config import settings
 from app.models import AggregatedTraits
@@ -8,30 +8,32 @@ from app.models import AggregatedTraits
 logger = logging.getLogger(__name__)
 
 
-def _get_openai() -> AsyncOpenAI:
-    return AsyncOpenAI(api_key=settings.openai_api_key)
+def _get_gemini() -> genai.GenerativeModel:
+    genai.configure(api_key=settings.gemini_api_key)
+    return genai.GenerativeModel("gemini-2.0-flash")
 
 
 def build_prompt(aggregated: AggregatedTraits) -> str:
-    energy_label = "high energy" if aggregated.energy >= 0.7 else "mid energy" if aggregated.energy >= 0.4 else "low energy"
-
+    energy_label = (
+        "high energy" if aggregated.energy >= 0.7
+        else "mid energy" if aggregated.energy >= 0.4
+        else "low energy"
+    )
     parts = [
-        f"{aggregated.genre_cluster}",
+        aggregated.genre_cluster,
         f"{aggregated.mood_cluster} mood",
         f"{int(aggregated.avg_bpm)} BPM",
-        f"{aggregated.mode_key}",
+        aggregated.mode_key,
         energy_label,
     ]
     if aggregated.vocal_type:
         parts.append(aggregated.vocal_type)
-
     return ", ".join(parts)
 
 
 def build_composition_plan(aggregated: AggregatedTraits, lyrics: str) -> dict:
     global_style = build_prompt(aggregated)
     lines = [line.strip() for line in lyrics.strip().split("\n") if line.strip()]
-
     return {
         "positive_global_styles": [global_style],
         "negative_global_styles": [],
@@ -48,18 +50,16 @@ def build_composition_plan(aggregated: AggregatedTraits, lyrics: str) -> dict:
 
 
 async def enrich_prompt(base_prompt: str, aggregated: AggregatedTraits) -> str:
-    if not settings.openai_api_key:
-        logger.warning("No OpenAI key — using base prompt without LLM enrichment")
+    if not settings.gemini_api_key:
+        logger.warning("No Gemini key — using base prompt without LLM enrichment")
         return base_prompt
 
-    client = _get_openai()
-    system = (
+    model = _get_gemini()
+    prompt_text = (
         "You are a music production assistant. Given a musical profile derived from retrieved "
         "blueprint tracks, write a vivid, evocative music generation prompt. "
         "Stay strictly grounded in the provided traits — do not add genre, mood, instruments, "
-        "or tempo that are not present in the profile. Keep the prompt under 120 words."
-    )
-    user = (
+        "or tempo that are not present in the profile. Keep the prompt under 120 words.\n\n"
         f"Musical profile:\n"
         f"- Genre: {aggregated.genre_cluster}\n"
         f"- Mood: {aggregated.mood_cluster}\n"
@@ -71,11 +71,16 @@ async def enrich_prompt(base_prompt: str, aggregated: AggregatedTraits) -> str:
         "Write an enriched music generation prompt:"
     )
 
-    response = await client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        max_tokens=180,
-        temperature=0.7,
-    )
-    enriched = response.choices[0].message.content or base_prompt
-    return enriched.strip()
+    try:
+        response = await model.generate_content_async(
+            prompt_text,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=200,
+                temperature=0.7,
+            ),
+        )
+        enriched = response.text or base_prompt
+        return enriched.strip()
+    except Exception:
+        logger.exception("Gemini enrichment failed — falling back to base prompt")
+        return base_prompt
