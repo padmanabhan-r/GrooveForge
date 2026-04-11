@@ -8,10 +8,13 @@ interface Particle {
   size: number;
   opacity: number;
   phase: number;
+  hue: number;
 }
 
-interface AuroraStrip {
+interface Nebula {
+  x: number;
   y: number;
+  radius: number;
   speed: number;
   opacity: number;
   hue: number;
@@ -23,28 +26,28 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
   const timeRef = useRef(0);
 
   const particles = useMemo<Particle[]>(() => {
-    return Array.from({ length: 100 }, () => ({
+    return Array.from({ length: 160 }, () => ({
       x: Math.random() * 2000,
       y: Math.random() * 2000,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.2,
-      size: Math.random() * 1.8 + 0.3,
-      opacity: Math.random() * 0.4 + 0.1,
+      vx: (Math.random() - 0.5) * 0.12,
+      vy: (Math.random() - 0.5) * 0.08,
+      size: Math.random() * 2.2 + 0.35,
+      opacity: Math.random() * 0.5 + 0.08,
       phase: Math.random() * Math.PI * 2,
+      hue: 205 + Math.random() * 35,
     }));
   }, []);
 
-  const auroras = useMemo<AuroraStrip[]>(() => {
-    return Array.from({ length: 5 }, (_, i) => ({
-      y: 0.8 + Math.random() * 0.3,
-      speed: 0.008 + Math.random() * 0.006,
-      opacity: 0.018 + Math.random() * 0.025,
-      hue: 18 + Math.random() * 20,
+  const nebulas = useMemo<Nebula[]>(() => {
+    return Array.from({ length: 4 }, () => ({
+      x: 0.16 + Math.random() * 0.68,
+      y: 0.14 + Math.random() * 0.64,
+      radius: 0.16 + Math.random() * 0.18,
+      speed: 0.002 + Math.random() * 0.002,
+      opacity: 0.04 + Math.random() * 0.04,
+      hue: 205 + Math.random() * 45,
     }));
   }, []);
-
-  // Waveform bars for the bottom
-  const barCount = 64;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,41 +71,32 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
 
       ctx.clearRect(0, 0, w, h);
 
-      // Layer 2 — Animated radial bloom (orange)
-      const bloomX = w * (0.4 + 0.2 * Math.sin(t * 0.08));
-      const bloomY = h * (0.3 + 0.15 * Math.cos(t * 0.06));
-      const bloomR = Math.min(w, h) * 0.6;
-      const bloomGrad = ctx.createRadialGradient(bloomX, bloomY, 0, bloomX, bloomY, bloomR);
-      bloomGrad.addColorStop(0, `hsla(22, 80%, 22%, ${0.09 + 0.03 * Math.sin(t * 0.12)})`);
-      bloomGrad.addColorStop(0.5, 'hsla(22, 70%, 14%, 0.04)');
-      bloomGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = bloomGrad;
+      const baseGradient = ctx.createLinearGradient(0, 0, 0, h);
+      baseGradient.addColorStop(0, 'hsl(230, 42%, 9%)');
+      baseGradient.addColorStop(0.48, 'hsl(226, 45%, 7%)');
+      baseGradient.addColorStop(1, 'hsl(234, 41%, 4%)');
+      ctx.fillStyle = baseGradient;
       ctx.fillRect(0, 0, w, h);
 
-      // Second bloom for depth
-      const b2x = w * (0.6 + 0.15 * Math.cos(t * 0.05));
-      const b2y = h * (0.6 + 0.1 * Math.sin(t * 0.07));
-      const b2Grad = ctx.createRadialGradient(b2x, b2y, 0, b2x, b2y, bloomR * 0.7);
-      b2Grad.addColorStop(0, `hsla(15, 70%, 18%, ${0.055 + 0.02 * Math.sin(t * 0.1)})`);
-      b2Grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = b2Grad;
+      const horizonGlow = ctx.createRadialGradient(w * 0.5, h * 0.92, 0, w * 0.5, h * 0.92, Math.min(w, h) * 0.6);
+      horizonGlow.addColorStop(0, 'hsla(222, 70%, 16%, 0.22)');
+      horizonGlow.addColorStop(0.45, 'hsla(236, 70%, 10%, 0.12)');
+      horizonGlow.addColorStop(1, 'transparent');
+      ctx.fillStyle = horizonGlow;
       ctx.fillRect(0, 0, w, h);
 
-      // Layer 5 — Aurora drift
-      auroras.forEach(a => {
-        a.y -= a.speed * 0.016;
-        if (a.y < -0.1) a.y = 1.1;
-        const ay = a.y * h;
-        const aGrad = ctx.createLinearGradient(0, ay - 40, 0, ay + 40);
-        const ao = a.opacity * (0.7 + 0.3 * Math.sin(t * 0.2 + a.hue));
-        aGrad.addColorStop(0, 'transparent');
-        aGrad.addColorStop(0.5, `hsla(${a.hue}, 60%, 30%, ${ao})`);
-        aGrad.addColorStop(1, 'transparent');
-        ctx.fillStyle = aGrad;
-        ctx.fillRect(0, ay - 40, w, 80);
+      nebulas.forEach((n, index) => {
+        const nx = (n.x + Math.sin(t * n.speed + index) * 0.04) * w;
+        const ny = (n.y + Math.cos(t * n.speed * 1.4 + index) * 0.03) * h;
+        const nr = Math.min(w, h) * n.radius;
+        const nebula = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+        nebula.addColorStop(0, `hsla(${n.hue}, 70%, 60%, ${n.opacity})`);
+        nebula.addColorStop(0.35, `hsla(${n.hue + 20}, 75%, 38%, ${n.opacity * 0.65})`);
+        nebula.addColorStop(1, 'transparent');
+        ctx.fillStyle = nebula;
+        ctx.fillRect(0, 0, w, h);
       });
 
-      // Layer 3 — Floating particles
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
@@ -112,29 +106,30 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
         if (p.y > h) p.y = 0;
 
         const flicker = p.opacity * (0.6 + 0.4 * Math.sin(t * 1.5 + p.phase));
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * window.devicePixelRatio, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(28, 20%, 85%, ${flicker})`;
-        ctx.fill();
-      });
+        const starRadius = p.size * window.devicePixelRatio;
+        const starGlow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, starRadius * 3.2);
+        starGlow.addColorStop(0, `hsla(${p.hue}, 90%, 88%, ${flicker})`);
+        starGlow.addColorStop(0.35, `hsla(${p.hue}, 85%, 76%, ${flicker * 0.45})`);
+        starGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = starGlow;
+        ctx.fillRect(p.x - starRadius * 3.2, p.y - starRadius * 3.2, starRadius * 6.4, starRadius * 6.4);
 
-      // Layer 4 — Ambient waveform bars at bottom
-      const barWidth = w / barCount;
-      const maxBarH = h * (isPlaying ? 0.08 : 0.025);
-      ctx.save();
-      for (let i = 0; i < barCount; i++) {
-        const freq = isPlaying
-          ? Math.sin(t * 3 + i * 0.3) * 0.5 + Math.sin(t * 5 + i * 0.7) * 0.3 + 0.5
-          : Math.sin(t * 0.8 + i * 0.2) * 0.3 + 0.4;
-        const barH = maxBarH * freq;
-        const x = i * barWidth;
-        const gradient = ctx.createLinearGradient(x, h, x, h - barH);
-        gradient.addColorStop(0, `hsla(25, 90%, 58%, ${isPlaying ? 0.28 : 0.07})`);
-        gradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(x, h - barH, barWidth - 1, barH);
-      }
-      ctx.restore();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, starRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 45%, 92%, ${Math.min(1, flicker + 0.1)})`;
+        ctx.fill();
+
+        if (p.size > 1.7) {
+          ctx.strokeStyle = `hsla(${p.hue}, 80%, 92%, ${flicker * 0.35})`;
+          ctx.lineWidth = window.devicePixelRatio * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(p.x - starRadius * 2.1, p.y);
+          ctx.lineTo(p.x + starRadius * 2.1, p.y);
+          ctx.moveTo(p.x, p.y - starRadius * 2.1);
+          ctx.lineTo(p.x, p.y + starRadius * 2.1);
+          ctx.stroke();
+        }
+      });
 
       animRef.current = requestAnimationFrame(draw);
     };
@@ -145,7 +140,7 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [particles, auroras, isPlaying]);
+  }, [particles, nebulas, isPlaying]);
 
   return (
     <>

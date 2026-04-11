@@ -115,7 +115,7 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
   const fh = selected ? OH : hue;
   const fs = selected ? OS : kind === 'l1' ? 48 : 42;
   const fl = selected ? OL : hovered ? (kind === 'l1' ? 31 : 28) : (kind === 'l1' ? 24 : 21);
-  const glow = selected ? hsl(OH, 95, 60) : hsl(hue, 70, 58);
+  const glow = selected ? hsl(OH, 95, 60) : hsl(hue, 72, 68);
   const lines = getLabelLines(label, kind === 'l1' ? 12 : 10);
   const lineGap = lines.length > 1 ? Math.max(10, fontSize * 0.95) : 0;
   const floatOffset = 4 + (floatSeed % 3);
@@ -146,6 +146,13 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
           fill="none" stroke={hsl(OH, 88, 60, 0.26)} strokeWidth={1.4}
           style={{ filter: `drop-shadow(0 0 8px ${glow})` }} />
       )}
+      <circle
+        cx={pos.x}
+        cy={pos.y}
+        r={r * 1.18}
+        fill={kind === 'l1' ? hsl(hue, 72, 62, 0.07) : hsl(hue, 68, 58, 0.05)}
+        style={{ pointerEvents: 'none', filter: `blur(${kind === 'l1' ? 4 : 3}px)` }}
+      />
       {hovered && !selected && (
         <circle cx={pos.x} cy={pos.y} r={r * 1.7} fill={hsl(hue, 55, 40, 0.11)} />
       )}
@@ -161,6 +168,16 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
               : 'drop-shadow(0 10px 16px rgba(0,0,0,0.18))',
           transition: 'fill 0.22s, filter 0.22s',
         }}
+      />
+      <ellipse
+        cx={pos.x - r * 0.18}
+        cy={pos.y - r * 0.22}
+        rx={r * 0.48}
+        ry={r * 0.22}
+        fill="rgba(255,255,255,0.13)"
+        opacity={0.9}
+        transform={`rotate(-18 ${pos.x} ${pos.y})`}
+        style={{ pointerEvents: 'none' }}
       />
       <circle cx={pos.x} cy={pos.y} r={r} fill="url(#sphere-gloss)" style={{ pointerEvents: 'none' }} />
       <text
@@ -324,9 +341,10 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative select-none overflow-hidden rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),rgba(255,255,255,0.015)_26%,rgba(4,6,12,0.2)_65%,rgba(4,6,12,0.48)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_32px_80px_rgba(0,0,0,0.35)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.04] to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
+    <div ref={containerRef} className="w-full h-full relative select-none overflow-hidden rounded-[28px] border border-sky-100/10 bg-[radial-gradient(circle_at_top,rgba(110,156,255,0.12),rgba(36,65,140,0.06)_22%,rgba(6,10,22,0.18)_48%,rgba(2,5,14,0.72)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_32px_80px_rgba(0,0,0,0.42)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(121,163,255,0.1),transparent_24%),radial-gradient(circle_at_78%_22%,rgba(85,132,246,0.08),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(78,111,196,0.07),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.035] to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/24 to-transparent" />
       <svg ref={svgRef} className="w-full h-full" style={{ display: 'block' }}>
         <defs>
           <radialGradient id="sphere-gloss" cx="38%" cy="32%" r="70%" fx="32%" fy="26%">
@@ -380,9 +398,9 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
               <path key={`e-${a}-${b}`}
                 d={perimeterArcPath(pa, pb, ROOT_RING)}
                 fill="none"
-                stroke="rgba(255,255,255,1)"
+                stroke="rgba(160,192,255,1)"
                 strokeWidth={0.7}
-                strokeOpacity={lit ? 0.09 : 0.03}
+                strokeOpacity={lit ? 0.16 : 0.06}
                 style={{ transition: 'stroke-opacity 0.4s' }} />
             );
           })}
@@ -475,10 +493,21 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                     strokeWidth={isExp ? 1.4 : 0.75}
                     style={{
                       filter: isExp
-                        ? `drop-shadow(0 0 24px ${hsl(H, 72, 58, 0.64)})`
-                        : `drop-shadow(0 0 7px ${hsl(H, 50, 40, 0.18)})`,
+                        ? `drop-shadow(0 0 24px ${hsl(H, 72, 58, 0.64)}) drop-shadow(0 18px 28px rgba(0,0,0,0.28))`
+                        : `drop-shadow(0 0 10px ${hsl(H, 50, 40, 0.22)}) drop-shadow(0 16px 22px rgba(0,0,0,0.22))`,
                       transition: 'all 0.3s',
                     }}
+                  />
+                  <ellipse
+                    cx={rp.x}
+                    cy={rp.y + ROOT_R * 0.04}
+                    rx={ROOT_R * 1.16}
+                    ry={ROOT_R * 0.38}
+                    fill="none"
+                    stroke={hsl(H, 50, 72, 0.2)}
+                    strokeWidth={1}
+                    transform={`rotate(-18 ${rp.x} ${rp.y})`}
+                    style={{ pointerEvents: 'none' }}
                   />
                   <circle cx={rp.x} cy={rp.y} r={ROOT_R} fill="url(#root-sphere-gloss)" style={{ pointerEvents: 'none' }} />
                   <text x={rp.x} y={rp.y - 6} textAnchor="middle" dominantBaseline="central"
