@@ -38,8 +38,8 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
     return Array.from({ length: 5 }, (_, i) => ({
       y: 0.8 + Math.random() * 0.3,
       speed: 0.008 + Math.random() * 0.006,
-      opacity: 0.02 + Math.random() * 0.03,
-      hue: 250 + Math.random() * 30,
+      opacity: 0.018 + Math.random() * 0.025,
+      hue: 18 + Math.random() * 20,
     }));
   }, []);
 
@@ -68,13 +68,13 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
 
       ctx.clearRect(0, 0, w, h);
 
-      // Layer 2 — Animated radial bloom
+      // Layer 2 — Animated radial bloom (orange)
       const bloomX = w * (0.4 + 0.2 * Math.sin(t * 0.08));
       const bloomY = h * (0.3 + 0.15 * Math.cos(t * 0.06));
       const bloomR = Math.min(w, h) * 0.6;
       const bloomGrad = ctx.createRadialGradient(bloomX, bloomY, 0, bloomX, bloomY, bloomR);
-      bloomGrad.addColorStop(0, `hsla(260, 70%, 30%, ${0.08 + 0.03 * Math.sin(t * 0.12)})`);
-      bloomGrad.addColorStop(0.5, 'hsla(260, 60%, 20%, 0.04)');
+      bloomGrad.addColorStop(0, `hsla(22, 80%, 22%, ${0.09 + 0.03 * Math.sin(t * 0.12)})`);
+      bloomGrad.addColorStop(0.5, 'hsla(22, 70%, 14%, 0.04)');
       bloomGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = bloomGrad;
       ctx.fillRect(0, 0, w, h);
@@ -83,7 +83,7 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
       const b2x = w * (0.6 + 0.15 * Math.cos(t * 0.05));
       const b2y = h * (0.6 + 0.1 * Math.sin(t * 0.07));
       const b2Grad = ctx.createRadialGradient(b2x, b2y, 0, b2x, b2y, bloomR * 0.7);
-      b2Grad.addColorStop(0, `hsla(280, 60%, 25%, ${0.05 + 0.02 * Math.sin(t * 0.1)})`);
+      b2Grad.addColorStop(0, `hsla(15, 70%, 18%, ${0.055 + 0.02 * Math.sin(t * 0.1)})`);
       b2Grad.addColorStop(1, 'transparent');
       ctx.fillStyle = b2Grad;
       ctx.fillRect(0, 0, w, h);
@@ -114,7 +114,7 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
         const flicker = p.opacity * (0.6 + 0.4 * Math.sin(t * 1.5 + p.phase));
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * window.devicePixelRatio, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(240, 30%, 80%, ${flicker})`;
+        ctx.fillStyle = `hsla(28, 20%, 85%, ${flicker})`;
         ctx.fill();
       });
 
@@ -129,7 +129,7 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
         const barH = maxBarH * freq;
         const x = i * barWidth;
         const gradient = ctx.createLinearGradient(x, h, x, h - barH);
-        gradient.addColorStop(0, `hsla(255, 80%, 60%, ${isPlaying ? 0.25 : 0.06})`);
+        gradient.addColorStop(0, `hsla(25, 90%, 58%, ${isPlaying ? 0.28 : 0.07})`);
         gradient.addColorStop(1, 'transparent');
         ctx.fillStyle = gradient;
         ctx.fillRect(x, h - barH, barWidth - 1, barH);

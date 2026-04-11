@@ -1,176 +1,70 @@
 import { useState, useCallback } from 'react';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
-import VibePanel from '@/components/VibePanel';
 import InputPanels from '@/components/InputPanels';
-import BlueprintTrail from '@/components/BlueprintTrail';
-import AudioPlayer from '@/components/AudioPlayer';
-import AggregatedProfile from '@/components/AggregatedProfile';
-import RemixControls from '@/components/RemixControls';
-import GeneratingOverlay from '@/components/GeneratingOverlay';
 import AnimatedBackground from '@/components/AnimatedBackground';
-import { getNodeLabel, compileQuery } from '@/data/graphNodes';
-import {
-  Blueprint, AggregatedTraits, GenerateResponse,
-  generateTrack, resolveAudioUrl,
-} from '@/lib/api';
-
-type AppState = 'empty' | 'selecting' | 'generating' | 'results' | 'error';
-
-const EMPTY_AGGREGATED: AggregatedTraits = {
-  avg_bpm: 0, mode_key: '', genre_cluster: '', mood_cluster: '', energy: 0, vocal_type: '',
-};
 
 const Index = () => {
   const [mode, setMode] = useState<AppMode>('graph');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
-  const [appState, setAppState] = useState<AppState>('empty');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
-  const [aggregated, setAggregated] = useState<AggregatedTraits>(EMPTY_AGGREGATED);
-  const [audioUrl, setAudioUrl] = useState('');
-  const [promptUsed, setPromptUsed] = useState('');
 
   const toggleNode = useCallback((id: string) => {
-    setSelectedNodes(prev => {
-      if (prev.includes(id)) {
-        const next = prev.filter(n => n !== id);
-        if (next.length === 0) setAppState('empty');
-        return next;
-      }
-      setAppState('selecting');
-      return [...prev, id];
-    });
+    setSelectedNodes(prev =>
+      prev.includes(id) ? prev.filter(n => n !== id) : [...prev, id]
+    );
   }, []);
 
-  const handleGenerate = useCallback(async () => {
-    if (selectedNodes.length === 0) return;
-    setAppState('generating');
-    setErrorMsg('');
-
-    const query = compileQuery(selectedNodes);
-    try {
-      const result: GenerateResponse = await generateTrack({
-        vibes: query.vibes,
-        blueprints: [],        // let backend do retrieval
-        bpm_lower: query.bpm_lower,
-        bpm_upper: query.bpm_upper,
-        lyrics: '',
-        mode: 'prompt',
-      });
-      setBlueprints(result.blueprints);
-      setAggregated(result.aggregated);
-      setAudioUrl(resolveAudioUrl(result.audio_url));
-      setPromptUsed(result.prompt_used);
-      setAppState('results');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Generation failed');
-      setAppState('error');
-    }
-  }, [selectedNodes]);
-
-  const handleRegenerate = useCallback(() => {
-    handleGenerate();
-  }, [handleGenerate]);
-
-  const vibeSummary = selectedNodes
-    .map(id => getNodeLabel(id))
-    .filter(Boolean)
-    .join(' · ');
-
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
-      <AnimatedBackground isPlaying={appState === 'results'} />
+    <div className="h-screen bg-background relative overflow-hidden">
+      <AnimatedBackground isPlaying={false} />
 
-      {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">G</span>
-          </div>
-          <div>
-            <h1 className="text-base font-semibold text-foreground tracking-tight">GrooveForge</h1>
-            <p className="text-[10px] text-muted-foreground tracking-widest uppercase">The ultimate musician's toolkit</p>
-          </div>
-        </div>
-        <ModeSwitcher active={mode} onChange={setMode} />
-      </header>
-
-      {/* Main Content — full-width canvas */}
-      <div className="flex-1 relative overflow-hidden z-10">
-        {mode === 'graph' && (
+      {/* Graph canvas — full viewport */}
+      {mode === 'graph' && (
+        <div className="absolute inset-x-4 top-20 bottom-4 z-0 sm:inset-x-6 sm:top-24 sm:bottom-6 lg:inset-x-8 lg:top-28 lg:bottom-8">
           <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} />
-        )}
-        {mode !== 'graph' && (
-          <div className="max-w-2xl mx-auto mt-12 px-4">
-            <InputPanels mode={mode} onGenerate={handleGenerate} />
-          </div>
-        )}
-
-        {/* Generating overlay */}
-        {appState === 'generating' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
-            <GeneratingOverlay />
-          </div>
-        )}
-
-        {/* Error state */}
-        {appState === 'error' && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-2 rounded-lg z-20">
-            {errorMsg}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Controls Bar — graph mode, nodes selected */}
-      {mode === 'graph' && selectedNodes.length > 0 && (
-        <div className="border-t border-border/50 px-5 py-3 flex items-center gap-4 flex-wrap relative z-10 bg-background/90 backdrop-blur-sm">
-          <VibePanel
-            selectedNodes={selectedNodes}
-            onRemoveNode={toggleNode}
-            onGenerate={handleGenerate}
-            isGenerating={appState === 'generating'}
-            horizontal
-          />
-
-          {selectedNodes.length >= 2 && (
-            <div className="flex items-center gap-2 border-l border-border/40 pl-4">
-              <AggregatedProfile
-                avgBpm={aggregated.avg_bpm || 0}
-                dominantKey={aggregated.mode_key || '—'}
-                genreCluster={aggregated.genre_cluster || '—'}
-                moodCluster={aggregated.mood_cluster || '—'}
-                horizontal
-              />
-            </div>
-          )}
-
-          {appState === 'results' && (
-            <div className="flex items-center gap-3 border-l border-border/40 pl-4 ml-auto">
-              <RemixControls onRegenerate={handleRegenerate} />
-              {promptUsed && (
-                <p className="text-xs text-foreground/50 max-w-xs truncate hidden lg:block" title={promptUsed}>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mr-1">Prompt:</span>
-                  {promptUsed}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Bottom Section - Audio + Blueprint trail */}
-      {appState === 'results' && (
-        <div className="border-t border-border/50 p-4 space-y-4 relative z-10">
-          <AudioPlayer
-            vibeSummary={vibeSummary || 'Custom Vibe'}
-            blueprintCount={blueprints.length}
-            trackKey={aggregated.mode_key}
-            trackBpm={aggregated.avg_bpm}
-            audioUrl={audioUrl}
-          />
-          <BlueprintTrail blueprints={blueprints} />
+      {/* Other input modes */}
+      {mode !== 'graph' && (
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
+          <div className="max-w-2xl w-full px-4">
+            <InputPanels mode={mode} onGenerate={() => {}} />
+          </div>
+        </div>
+      )}
+
+      {/* Floating title — top left */}
+      <div className="absolute top-4 left-5 z-20 flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(145deg, #fb923c 0%, #f97316 50%, #ea6c0a 100%)',
+            boxShadow: '0 0 14px rgba(249,115,22,0.45), 0 2px 6px rgba(0,0,0,0.4)',
+          }}>
+          <span style={{ fontSize: 15 }}>🔥</span>
+        </div>
+        <div>
+          <p className="text-[14px] font-bold text-white leading-tight" style={{ letterSpacing: '-0.01em' }}>
+            GrooveForge
+          </p>
+          <p className="text-[8px] uppercase tracking-[0.18em] font-medium"
+            style={{ color: 'rgba(249,115,22,0.55)' }}>
+            Search by vibe · Generate by blueprint
+          </p>
+        </div>
+      </div>
+
+      {/* Floating mode tabs — top right */}
+      <div className="absolute top-4 right-4 z-20">
+        <ModeSwitcher active={mode} onChange={setMode} />
+      </div>
+
+      {mode === 'graph' && (
+        <div className="pointer-events-none absolute left-5 top-[72px] z-10 hidden max-w-sm rounded-2xl border border-white/8 bg-black/20 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl md:block">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-white/45">Vibe Graph</p>
+          <p className="mt-1 text-sm leading-5 text-white/72">
+            Expand a category, then refine with sub-bubbles. Labels stay inside the nodes so the clusters read cleanly.
+          </p>
         </div>
       )}
     </div>

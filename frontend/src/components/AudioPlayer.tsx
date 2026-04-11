@@ -112,8 +112,9 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
               className="flex-1 rounded-t-sm transition-colors duration-150"
               style={{
                 height: `${h * 100}%`,
-                backgroundColor: isPast ? 'hsl(255 85% 60%)' : 'hsl(220 15% 22%)',
-                opacity: isPast ? 1 : 0.6,
+                backgroundColor: isPast ? 'hsl(25 92% 56%)' : 'rgba(255,255,255,0.08)',
+                boxShadow: isPast ? '0 0 4px rgba(249,115,22,0.4)' : 'none',
+                opacity: isPast ? 1 : 0.7,
               }}
             />
           );
@@ -138,7 +139,11 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
           </button>
           <button
             onClick={togglePlay}
-            className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:brightness-110 transition-all shadow-lg shadow-primary/30"
+            className="w-12 h-12 rounded-full text-white flex items-center justify-center transition-all"
+            style={{
+              background: 'linear-gradient(145deg, #fb923c 0%, #f97316 55%, #ea6c0a 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.2), 0 0 20px rgba(249,115,22,0.45), 0 4px 12px rgba(0,0,0,0.4)',
+            }}
           >
             {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
           </button>
@@ -168,8 +173,12 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
         onClick={handleScrub}
       >
         <div
-          className="h-full rounded-full bg-primary transition-all duration-100 relative"
-          style={{ width: `${progress}%` }}
+          className="h-full rounded-full transition-all duration-100 relative"
+          style={{
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #f97316, #fb923c)',
+            boxShadow: '0 0 8px rgba(249,115,22,0.5)',
+          }}
         >
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>

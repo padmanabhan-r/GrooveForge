@@ -57,8 +57,12 @@ export default function BlueprintTrail({ blueprints }: BlueprintTrailProps) {
                 </div>
                 <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700"
-                    style={{ width: `${energyPct}%` }}
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${energyPct}%`,
+                      background: 'linear-gradient(90deg, #ea6c0a, #f97316, #fb923c)',
+                      boxShadow: '0 0 6px rgba(249,115,22,0.4)',
+                    }}
                   />
                 </div>
               </div>
