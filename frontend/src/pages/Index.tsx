@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, KeyboardEvent } from 'react';
-import { Zap, Sparkles, Plus, X } from 'lucide-react';
+import { Zap, Sparkles, Plus, X, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
@@ -7,9 +7,16 @@ import InputPanels from '@/components/InputPanels';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
+import { BlueprintDeck } from '@/components/BlueprintDeck';
 import ReviewModal from '@/components/ReviewModal';
-import { generateTrack, previewGeneration, searchBlueprints, GenerateResponse, SearchResponse, Blueprint, PreviewResponse } from '@/lib/api';
+import { generateTrack, previewGeneration, searchBlueprints, analyzeLyrics, analyzeSound, GenerateResponse, SearchResponse, Blueprint, PreviewResponse, LyricsAnalysis, SoundAnalysis } from '@/lib/api';
+import LyricsAnalysisCard from '@/components/LyricsAnalysisCard';
+import SoundAnalysisCard from '@/components/SoundAnalysisCard';
 import { compileQuery, getNodeLabel } from '@/data/graphNodes';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
   graph: {
@@ -38,10 +45,13 @@ const Index = () => {
   const vibeInputRef = useRef<HTMLInputElement>(null);
   const [freeText, setFreeText] = useState('');
   const [lyrics, setLyrics] = useState('');
+  const [audioFile, setAudioFile] = useState<File | null>(null);
 
   // Step 1: search
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [lyricsAnalysis, setLyricsAnalysis] = useState<LyricsAnalysis | null>(null);
+  const [soundAnalysis, setSoundAnalysis] = useState<SoundAnalysis | null>(null);
   const [selectedBlueprintIds, setSelectedBlueprintIds] = useState<Set<string>>(new Set());
 
   // Step 2: generate
@@ -58,6 +68,9 @@ const Index = () => {
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
   // Pending generate request — stored so confirm can fire it
   const pendingGenerate = useRef<Parameters<typeof generateTrack>[0] | null>(null);
+
+  // Pop-out deck dialog
+  const [deckPoppedOut, setDeckPoppedOut] = useState(false);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -77,33 +90,49 @@ const Index = () => {
     setIsSearching(true);
     setError(null);
     setSearchResults(null);
+    setLyricsAnalysis(null);
+    setSoundAnalysis(null);
     setGenerationResult(null);
 
     try {
-      const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
-      const query = mode === 'graph'
-        ? {
-            ...baseQuery!,
-            free_text: [baseQuery!.free_text, ...extraVibes].filter(Boolean).join(' '),
-          }
-        : {
-            vibes: [],
-            free_text: mode === 'text' ? freeText : lyrics,
-            bpm_lower: null,
-            bpm_upper: null,
-            key: null,
-            vocal_type: null,
-            top_k: 8,
-          };
-      const result = await searchBlueprints(query);
-      setSearchResults(result);
-      setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+      if (mode === 'lyrics') {
+        const result = await analyzeLyrics(lyrics);
+        setLyricsAnalysis(result.analysis);
+        setSearchResults({ blueprints: result.blueprints, aggregated: result.aggregated });
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+        setGenerationMode('advanced');
+      } else if (mode === 'sound') {
+        if (!audioFile) throw new Error('No audio file selected');
+        const result = await analyzeSound(audioFile);
+        setSoundAnalysis(result.analysis);
+        setSearchResults({ blueprints: result.blueprints, aggregated: result.aggregated });
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+      } else {
+        const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
+        const query = mode === 'graph'
+          ? {
+              ...baseQuery!,
+              free_text: [baseQuery!.free_text, ...extraVibes].filter(Boolean).join(' '),
+            }
+          : {
+              vibes: [],
+              free_text: freeText,
+              bpm_lower: null,
+              bpm_upper: null,
+              key: null,
+              vocal_type: null,
+              top_k: 8,
+            };
+        const result = await searchBlueprints(query);
+        setSearchResults(result);
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed. Please try again.');
     } finally {
       setIsSearching(false);
     }
-  }, [mode, selectedNodes, freeText, lyrics, extraVibes]);
+  }, [mode, selectedNodes, freeText, lyrics, extraVibes, audioFile]);
 
   const _buildGeneratePayload = useCallback(() => {
     if (!searchResults) return null;
@@ -111,7 +140,11 @@ const Index = () => {
     if (blueprints.length === 0) return null;
     const user_input = mode === 'graph'
       ? selectedNodes.map(getNodeLabel).join(', ')
-      : mode === 'text' ? freeText : lyrics;
+      : mode === 'lyrics'
+      ? (lyricsAnalysis?.search_query ?? lyrics)
+      : mode === 'sound'
+      ? (soundAnalysis?.search_query ?? '')
+      : freeText;
     return {
       vibes: [] as string[],
       free_text: '',
@@ -123,7 +156,7 @@ const Index = () => {
       generation_mode: generationMode,
       music_length_ms: musicLengthMs,
     };
-  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs]);
+  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs, lyricsAnalysis, soundAnalysis]);
 
   const handleGenerate = useCallback(async () => {
     const payload = _buildGeneratePayload();
@@ -177,6 +210,9 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setSearchResults(null);
+    setLyricsAnalysis(null);
+    setSoundAnalysis(null);
+    setAudioFile(null);
     setGenerationResult(null);
     setSelectedBlueprintIds(new Set());
     setError(null);
@@ -195,6 +231,8 @@ const Index = () => {
     ? freeText.trim().length > 0
     : mode === 'lyrics'
     ? lyrics.trim().length > 0
+    : mode === 'sound'
+    ? audioFile !== null
     : false;
 
   const selectedBlueprints = searchResults?.blueprints.filter(bp => selectedBlueprintIds.has(bp.id)) ?? [];
@@ -217,6 +255,8 @@ const Index = () => {
                   onFreeTextChange={setFreeText}
                   lyrics={lyrics}
                   onLyricsChange={setLyrics}
+                  audioFile={audioFile}
+                  onAudioFileChange={setAudioFile}
                   onSearch={handleSearch}
                   isSearching={isSearching}
                 />
@@ -243,12 +283,26 @@ const Index = () => {
             {/* State 2: blueprint selection */}
             {!generationResult && searchResults && (
               <>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
-                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
-                  <p className="mt-2 text-sm leading-6 text-white/62">
-                    These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
+                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
+                    <p className="mt-2 text-sm leading-6 text-white/62">
+                      These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setDeckPoppedOut(true)}
+                    className="flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 transition-all hover:brightness-110 mt-6"
+                    style={{
+                      background: 'rgba(99,102,241,0.08)',
+                      border: '1px solid rgba(99,102,241,0.25)',
+                      color: 'rgba(165,168,255,0.8)',
+                    }}
+                    title="Pop out to separate window"
+                  >
+                    <ExternalLink size={14} />
+                  </button>
                 </div>
 
                 {error && (
@@ -257,6 +311,18 @@ const Index = () => {
                     style={{ background: 'rgba(239,68,68,0.07)', color: 'rgba(255,180,180,0.9)' }}
                   >
                     {error}
+                  </div>
+                )}
+
+                {lyricsAnalysis && (
+                  <div className="mt-4">
+                    <LyricsAnalysisCard analysis={lyricsAnalysis} />
+                  </div>
+                )}
+
+                {soundAnalysis && (
+                  <div className="mt-4">
+                    <SoundAnalysisCard analysis={soundAnalysis} />
                   </div>
                 )}
 
@@ -380,8 +446,11 @@ const Index = () => {
                     disabled={isGenerating || isPreviewing || selectedBlueprints.length === 0}
                     className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-                      boxShadow: '0 0 24px rgba(249,115,22,0.35)',
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
                     }}
                   >
                     <Sparkles size={15} />
@@ -528,8 +597,11 @@ const Index = () => {
                       disabled={isSearching || (selectedNodes.length === 0 && extraVibes.length === 0)}
                       className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
-                        background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-                        boxShadow: '0 0 24px rgba(249,115,22,0.35)',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
                       }}
                     >
                       <Sparkles size={15} />
@@ -563,27 +635,31 @@ const Index = () => {
 
       {/* Floating title */}
       <div className="absolute top-4 left-5 z-20 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
-            background: 'linear-gradient(145deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-            boxShadow: '0 0 20px rgba(251,191,36,0.45), 0 0 8px rgba(249,115,22,0.55), 0 3px 8px rgba(0,0,0,0.45)',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
           }}>
-          <Zap size={18} fill="white" color="white" strokeWidth={0} />
+          <Zap size={16} fill="white" color="white" strokeWidth={0} />
         </div>
-        <div>
-          <p className="text-[16px] font-black leading-tight"
-            style={{
-              letterSpacing: '-0.04em',
-              background: 'linear-gradient(135deg, #ffffff 0%, #fde68a 42%, #f97316 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
+        <div
+          className="px-4 py-2.5 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+        >
+          <p
+            className="text-[15px] font-bold leading-none tracking-wide"
+            style={{ color: 'rgba(255,255,255,0.92)' }}
+          >
             GrooveForge
-          </p>
-          <p className="text-[8px] uppercase tracking-[0.22em] font-semibold"
-            style={{ color: 'rgba(249,115,22,0.6)' }}>
-            Search by vibe · Generate by blueprint
           </p>
         </div>
       </div>
@@ -619,6 +695,50 @@ const Index = () => {
           onCancel={() => { setPreviewData(null); pendingGenerate.current = null; }}
         />
       )}
+
+      {/* Pop-out deck dialog */}
+      <Dialog open={deckPoppedOut} onOpenChange={setDeckPoppedOut}>
+        <DialogContent
+          className="max-w-2xl w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-hidden flex flex-col p-0"
+          style={{
+            background: 'linear-gradient(180deg,rgba(10,16,32,0.95),rgba(8,12,24,0.92))',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          }}
+        >
+          {/* Pop-out header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
+              <h2 className="text-lg font-semibold text-white">Pick Your Sound</h2>
+            </div>
+          </div>
+
+          {/* Blueprint deck content — scrollable */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+            {searchResults && (
+              <BlueprintDeck
+                searchResults={searchResults}
+                selectedBlueprintIds={selectedBlueprintIds}
+                onToggleBlueprint={toggleBlueprint}
+                generationMode={generationMode}
+                onGenerationModeChange={setGenerationMode}
+                musicLengthMs={musicLengthMs}
+                onMusicLengthChange={setMusicLengthMs}
+                reviewMode={reviewMode}
+                onReviewModeChange={setReviewMode}
+                onGenerate={handleGenerate}
+                onReset={() => { setDeckPoppedOut(false); handleReset(); }}
+                isGenerating={isGenerating}
+                isPreviewing={isPreviewing}
+                error={error}
+                lyricsAnalysis={lyricsAnalysis}
+                soundAnalysis={soundAnalysis}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

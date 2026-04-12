@@ -66,13 +66,6 @@ export interface GenerateRequest {
   music_length_ms: number;
 }
 
-export interface GenerateResponse {
-  audio_url: string;
-  prompt_used: string;
-  blueprints: Blueprint[];
-  aggregated: AggregatedTraits;
-}
-
 export interface CompositionSection {
   section_name: string;
   positive_local_styles: string[];
@@ -87,10 +80,59 @@ export interface CompositionPlan {
   sections: CompositionSection[];
 }
 
+export interface GenerateResponse {
+  audio_url: string;
+  prompt_used: string;
+  composition_plan: CompositionPlan | null;
+  blueprints: Blueprint[];
+  aggregated: AggregatedTraits;
+}
+
 export interface PreviewResponse {
   generation_mode: 'simple' | 'advanced';
   prompt_used: string;
   composition_plan: CompositionPlan | null;
+}
+
+export interface LyricsAnalysis {
+  mood: string[];
+  themes: string[];
+  energy: number;
+  suggested_genres: string[];
+  vocal_style: string;
+  search_query: string;
+}
+
+export interface LyricsSearchResponse {
+  analysis: LyricsAnalysis;
+  blueprints: Blueprint[];
+  aggregated: AggregatedTraits;
+}
+
+export interface SoundAnalysis {
+  bpm_estimate: number;
+  key: string;
+  mode: string;
+  mood: string[];
+  texture_tags: string[];
+  energy: number;
+  suggested_genres: string[];
+  search_query: string;
+}
+
+export interface SoundSearchResponse {
+  analysis: SoundAnalysis;
+  blueprints: Blueprint[];
+  aggregated: AggregatedTraits;
+}
+
+async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: formData });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`API ${path} failed (${res.status}): ${text}`);
+  }
+  return res.json();
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
@@ -116,6 +158,16 @@ export function generateTrack(req: GenerateRequest): Promise<GenerateResponse> {
 
 export function previewGeneration(req: GenerateRequest): Promise<PreviewResponse> {
   return post<PreviewResponse>('/api/preview', req);
+}
+
+export function analyzeLyrics(lyrics: string): Promise<LyricsSearchResponse> {
+  return post<LyricsSearchResponse>('/api/analyze-lyrics', { lyrics });
+}
+
+export function analyzeSound(file: File): Promise<SoundSearchResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return postFormData<SoundSearchResponse>('/api/analyze-sound', formData);
 }
 
 export function resolveAudioUrl(path: string): string {

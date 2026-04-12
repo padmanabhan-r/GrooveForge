@@ -70,6 +70,7 @@ class GenerateRequest(BaseModel):
 class GenerateResponse(BaseModel):
     audio_url: str
     prompt_used: str
+    composition_plan: dict | None = None
     blueprints: list[Blueprint]
     aggregated: AggregatedTraits
 
@@ -78,3 +79,39 @@ class PreviewResponse(BaseModel):
     generation_mode: Literal["simple", "advanced"]
     prompt_used: str = ""          # populated for simple mode
     composition_plan: dict | None = None  # populated for advanced mode
+
+
+class LyricsAnalysis(BaseModel):
+    mood: list[str]               # e.g. ["melancholic", "yearning"]
+    themes: list[str]             # e.g. ["loss", "urban loneliness"]
+    energy: float = Field(ge=0.0, le=1.0)
+    suggested_genres: list[str]   # e.g. ["indie folk", "alternative"]
+    vocal_style: str              # e.g. "emotive, breathy female vocals"
+    search_query: str             # synthesized for Turbopuffer retrieval
+
+
+class LyricsAnalysisRequest(BaseModel):
+    lyrics: str
+
+
+class LyricsSearchResponse(BaseModel):
+    analysis: LyricsAnalysis
+    blueprints: list[Blueprint]
+    aggregated: AggregatedTraits
+
+
+class SoundAnalysis(BaseModel):
+    bpm_estimate: float
+    key: str                         # chromatic note or "unknown"
+    mode: str                        # "major" | "minor" | "unknown"
+    mood: list[str]
+    texture_tags: list[str]
+    energy: float = Field(ge=0.0, le=1.0)
+    suggested_genres: list[str]
+    search_query: str                # no artist/song names
+
+
+class SoundSearchResponse(BaseModel):
+    analysis: SoundAnalysis
+    blueprints: list[Blueprint]
+    aggregated: AggregatedTraits

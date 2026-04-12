@@ -17,13 +17,13 @@ interface ModeSwitcherProps {
 export default function ModeSwitcher({ active, onChange }: ModeSwitcherProps) {
   return (
     <div
-      className="flex items-center gap-1.5 rounded-[20px] p-1.5"
+      className="flex items-center gap-1 rounded-full px-1.5 py-1.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(18,21,31,0.88) 0%, rgba(10,12,20,0.72) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 32px rgba(0,0,0,0.28)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.24)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
       }}
     >
       {modes.map(m => {
@@ -32,22 +32,45 @@ export default function ModeSwitcher({ active, onChange }: ModeSwitcherProps) {
           <button
             key={m.id}
             onClick={() => onChange(m.id)}
-            className="group relative flex min-w-[56px] items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-300"
+            className="group relative flex min-w-[48px] items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-300"
             style={isActive ? {
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%), linear-gradient(145deg, #fb923c 0%, #f97316 58%, #d85d07 100%)',
               color: '#fff',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.24), 0 10px 24px rgba(249,115,22,0.28), 0 2px 8px rgba(0,0,0,0.32)',
               transform: 'translateY(-1px)',
             } : {
-              color: 'rgba(255,255,255,0.56)',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
+              color: 'rgba(255,255,255,0.45)',
             }}
           >
-            <div
-              className="absolute inset-[1px] rounded-[15px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }}
-            />
-            <m.icon size={15} className="relative z-10" />
+            {/* Active tab: frosted glass pill with glossy sheen */}
+            {isActive && (
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 40%, rgba(255,255,255,0.02) 100%)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.1)',
+                }}
+              />
+            )}
+            {/* Inactive tab: subtle glass on hover */}
+            {!isActive && (
+              <div
+                className="absolute inset-0 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              />
+            )}
+            {/* Glossy top highlight line */}
+            {isActive && (
+              <div
+                className="absolute top-1 left-3 right-3 h-px rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
+                }}
+              />
+            )}
+            <m.icon size={13} className="relative z-10" strokeWidth={isActive ? 2.5 : 2} />
             <span className="relative z-10 hidden sm:inline tracking-[0.01em]">{m.label}</span>
           </button>
         );

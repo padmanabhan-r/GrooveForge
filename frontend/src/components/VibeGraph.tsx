@@ -491,7 +491,11 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative select-none overflow-hidden rounded-[28px] border border-sky-100/10 bg-[radial-gradient(circle_at_top,rgba(110,156,255,0.12),rgba(36,65,140,0.06)_22%,rgba(6,10,22,0.18)_48%,rgba(2,5,14,0.72)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_32px_80px_rgba(0,0,0,0.42)]">
+    <div ref={containerRef} className="w-full h-full relative select-none overflow-hidden rounded-[28px] border border-sky-100/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_32px_80px_rgba(0,0,0,0.42)] before:absolute before:inset-0 before:z-[1] before:pointer-events-none before:bg-[radial-gradient(circle,rgba(255,255,255,0.055)_1px,transparent_1px)] before:bg-[size:32px_32px]"
+      style={{
+        background: 'radial-gradient(circle_at_top,rgba(110,156,255,0.12),rgba(36,65,140,0.06)_22%,rgba(6,10,22,0.18)_48%,rgba(2,5,14,0.72)_100%)',
+      }}
+    >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(121,163,255,0.1),transparent_24%),radial-gradient(circle_at_78%_22%,rgba(85,132,246,0.08),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(78,111,196,0.07),transparent_24%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.035] to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/24 to-transparent" />
