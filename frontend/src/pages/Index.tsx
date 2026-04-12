@@ -9,8 +9,9 @@ import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
 import { BlueprintDeck } from '@/components/BlueprintDeck';
 import ReviewModal from '@/components/ReviewModal';
-import { generateTrack, previewGeneration, searchBlueprints, analyzeLyrics, GenerateResponse, SearchResponse, Blueprint, PreviewResponse, LyricsAnalysis } from '@/lib/api';
+import { generateTrack, previewGeneration, searchBlueprints, analyzeLyrics, analyzeSound, GenerateResponse, SearchResponse, Blueprint, PreviewResponse, LyricsAnalysis, SoundAnalysis } from '@/lib/api';
 import LyricsAnalysisCard from '@/components/LyricsAnalysisCard';
+import SoundAnalysisCard from '@/components/SoundAnalysisCard';
 import { compileQuery, getNodeLabel } from '@/data/graphNodes';
 import {
   Dialog,
@@ -44,11 +45,13 @@ const Index = () => {
   const vibeInputRef = useRef<HTMLInputElement>(null);
   const [freeText, setFreeText] = useState('');
   const [lyrics, setLyrics] = useState('');
+  const [audioFile, setAudioFile] = useState<File | null>(null);
 
   // Step 1: search
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
   const [lyricsAnalysis, setLyricsAnalysis] = useState<LyricsAnalysis | null>(null);
+  const [soundAnalysis, setSoundAnalysis] = useState<SoundAnalysis | null>(null);
   const [selectedBlueprintIds, setSelectedBlueprintIds] = useState<Set<string>>(new Set());
 
   // Step 2: generate
@@ -88,6 +91,7 @@ const Index = () => {
     setError(null);
     setSearchResults(null);
     setLyricsAnalysis(null);
+    setSoundAnalysis(null);
     setGenerationResult(null);
 
     try {
@@ -97,6 +101,12 @@ const Index = () => {
         setSearchResults({ blueprints: result.blueprints, aggregated: result.aggregated });
         setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
         setGenerationMode('advanced');
+      } else if (mode === 'sound') {
+        if (!audioFile) throw new Error('No audio file selected');
+        const result = await analyzeSound(audioFile);
+        setSoundAnalysis(result.analysis);
+        setSearchResults({ blueprints: result.blueprints, aggregated: result.aggregated });
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
       } else {
         const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
         const query = mode === 'graph'
@@ -122,7 +132,7 @@ const Index = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [mode, selectedNodes, freeText, lyrics, extraVibes]);
+  }, [mode, selectedNodes, freeText, lyrics, extraVibes, audioFile]);
 
   const _buildGeneratePayload = useCallback(() => {
     if (!searchResults) return null;
@@ -132,6 +142,8 @@ const Index = () => {
       ? selectedNodes.map(getNodeLabel).join(', ')
       : mode === 'lyrics'
       ? (lyricsAnalysis?.search_query ?? lyrics)
+      : mode === 'sound'
+      ? (soundAnalysis?.search_query ?? '')
       : freeText;
     return {
       vibes: [] as string[],
@@ -144,7 +156,7 @@ const Index = () => {
       generation_mode: generationMode,
       music_length_ms: musicLengthMs,
     };
-  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs, lyricsAnalysis]);
+  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs, lyricsAnalysis, soundAnalysis]);
 
   const handleGenerate = useCallback(async () => {
     const payload = _buildGeneratePayload();
@@ -199,6 +211,8 @@ const Index = () => {
   const handleReset = useCallback(() => {
     setSearchResults(null);
     setLyricsAnalysis(null);
+    setSoundAnalysis(null);
+    setAudioFile(null);
     setGenerationResult(null);
     setSelectedBlueprintIds(new Set());
     setError(null);
@@ -217,6 +231,8 @@ const Index = () => {
     ? freeText.trim().length > 0
     : mode === 'lyrics'
     ? lyrics.trim().length > 0
+    : mode === 'sound'
+    ? audioFile !== null
     : false;
 
   const selectedBlueprints = searchResults?.blueprints.filter(bp => selectedBlueprintIds.has(bp.id)) ?? [];
@@ -239,6 +255,8 @@ const Index = () => {
                   onFreeTextChange={setFreeText}
                   lyrics={lyrics}
                   onLyricsChange={setLyrics}
+                  audioFile={audioFile}
+                  onAudioFileChange={setAudioFile}
                   onSearch={handleSearch}
                   isSearching={isSearching}
                 />
@@ -299,6 +317,12 @@ const Index = () => {
                 {lyricsAnalysis && (
                   <div className="mt-4">
                     <LyricsAnalysisCard analysis={lyricsAnalysis} />
+                  </div>
+                )}
+
+                {soundAnalysis && (
+                  <div className="mt-4">
+                    <SoundAnalysisCard analysis={soundAnalysis} />
                   </div>
                 )}
 
@@ -699,6 +723,7 @@ const Index = () => {
                 isPreviewing={isPreviewing}
                 error={error}
                 lyricsAnalysis={lyricsAnalysis}
+                soundAnalysis={soundAnalysis}
               />
             )}
           </div>

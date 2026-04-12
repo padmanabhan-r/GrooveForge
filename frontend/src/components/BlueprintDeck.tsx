@@ -3,7 +3,8 @@ import { Sparkles, X, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import BlueprintCard from '@/components/BlueprintCard';
 import LyricsAnalysisCard from '@/components/LyricsAnalysisCard';
-import { Blueprint, SearchResponse, GenerateResponse, LyricsAnalysis } from '@/lib/api';
+import SoundAnalysisCard from '@/components/SoundAnalysisCard';
+import { Blueprint, SearchResponse, GenerateResponse, LyricsAnalysis, SoundAnalysis } from '@/lib/api';
 
 interface BlueprintDeckProps {
   searchResults: SearchResponse;
@@ -21,6 +22,7 @@ interface BlueprintDeckProps {
   isPreviewing: boolean;
   error: string | null;
   lyricsAnalysis?: LyricsAnalysis | null;
+  soundAnalysis?: SoundAnalysis | null;
 }
 
 export function BlueprintDeck({
@@ -39,6 +41,7 @@ export function BlueprintDeck({
   isPreviewing,
   error,
   lyricsAnalysis,
+  soundAnalysis,
 }: BlueprintDeckProps) {
   const selectedBlueprints = searchResults.blueprints.filter(bp => selectedBlueprintIds.has(bp.id));
 
@@ -65,6 +68,12 @@ export function BlueprintDeck({
       {lyricsAnalysis && (
         <div className="mt-4">
           <LyricsAnalysisCard analysis={lyricsAnalysis} />
+        </div>
+      )}
+
+      {soundAnalysis && (
+        <div className="mt-4">
+          <SoundAnalysisCard analysis={soundAnalysis} />
         </div>
       )}
 

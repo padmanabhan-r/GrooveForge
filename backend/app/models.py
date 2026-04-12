@@ -98,3 +98,20 @@ class LyricsSearchResponse(BaseModel):
     analysis: LyricsAnalysis
     blueprints: list[Blueprint]
     aggregated: AggregatedTraits
+
+
+class SoundAnalysis(BaseModel):
+    bpm_estimate: float
+    key: str                         # chromatic note or "unknown"
+    mode: str                        # "major" | "minor" | "unknown"
+    mood: list[str]
+    texture_tags: list[str]
+    energy: float = Field(ge=0.0, le=1.0)
+    suggested_genres: list[str]
+    search_query: str                # no artist/song names
+
+
+class SoundSearchResponse(BaseModel):
+    analysis: SoundAnalysis
+    blueprints: list[Blueprint]
+    aggregated: AggregatedTraits

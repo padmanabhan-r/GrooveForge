@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routes import generate, health, lyrics, search
+from app.routes import generate, health, lyrics, search, sound
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
@@ -45,3 +45,4 @@ app.include_router(health.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(generate.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
+app.include_router(sound.router, prefix="/api")
