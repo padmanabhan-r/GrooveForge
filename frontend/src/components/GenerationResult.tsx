@@ -141,7 +141,16 @@ export default function GenerationResult({ result }: GenerationResultProps) {
           { label: 'Avg BPM', value: Math.round(aggregated.avg_bpm).toString() },
           { label: 'Key', value: aggregated.mode_key },
           { label: 'Style', value: prompt_used.split(',')[0].trim() || aggregated.genre_cluster },
-          { label: 'Vocal', value: aggregated.vocal_type || '—' },
+          {
+            label: 'Vocal',
+            value: (() => {
+              if (aggregated.vocal_type) return aggregated.vocal_type;
+              const vocalTerm = prompt_used.split(',').map(s => s.trim()).find(s =>
+                /vocal|voice|singer|rap|choir|growl|spoken|instrumental/i.test(s)
+              );
+              return vocalTerm || '—';
+            })(),
+          },
           { label: 'Energy', value: (aggregated.energy * 100).toFixed(0) + '%' },
         ].map(({ label, value }) => (
           <div
