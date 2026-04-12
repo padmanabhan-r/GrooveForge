@@ -1,12 +1,14 @@
 import { useState, useCallback, useRef, KeyboardEvent } from 'react';
 import { Zap, Sparkles, Plus, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
 import InputPanels from '@/components/InputPanels';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
-import { generateTrack, searchBlueprints, GenerateResponse, SearchResponse, Blueprint } from '@/lib/api';
+import ReviewModal from '@/components/ReviewModal';
+import { generateTrack, previewGeneration, searchBlueprints, GenerateResponse, SearchResponse, Blueprint, PreviewResponse } from '@/lib/api';
 import { compileQuery, getNodeLabel } from '@/data/graphNodes';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
@@ -49,6 +51,13 @@ const Index = () => {
   const [generationMode, setGenerationMode] = useState<'simple' | 'advanced'>('simple');
   const [musicLengthMs, setMusicLengthMs] = useState(90000);
   const [graphResetKey, setGraphResetKey] = useState(0);
+
+  // Review mode — preview prompt/plan before sending to ElevenLabs
+  const [reviewMode, setReviewMode] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
+  // Pending generate request — stored so confirm can fire it
+  const pendingGenerate = useRef<Parameters<typeof generateTrack>[0] | null>(null);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -96,37 +105,75 @@ const Index = () => {
     }
   }, [mode, selectedNodes, freeText, lyrics, extraVibes]);
 
-  const handleGenerate = useCallback(async () => {
-    if (!searchResults) return;
+  const _buildGeneratePayload = useCallback(() => {
+    if (!searchResults) return null;
     const blueprints: Blueprint[] = searchResults.blueprints.filter(bp => selectedBlueprintIds.has(bp.id));
-    if (blueprints.length === 0) return;
-
-    setIsGenerating(true);
-    setError(null);
-
+    if (blueprints.length === 0) return null;
     const user_input = mode === 'graph'
       ? selectedNodes.map(getNodeLabel).join(', ')
       : mode === 'text' ? freeText : lyrics;
+    return {
+      vibes: [] as string[],
+      free_text: '',
+      blueprints,
+      bpm_lower: null,
+      bpm_upper: null,
+      lyrics: mode === 'lyrics' ? lyrics : '',
+      user_input,
+      generation_mode: generationMode,
+      music_length_ms: musicLengthMs,
+    };
+  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs]);
 
+  const handleGenerate = useCallback(async () => {
+    const payload = _buildGeneratePayload();
+    if (!payload) return;
+
+    if (reviewMode) {
+      // Preview step: synthesize without calling ElevenLabs
+      setIsPreviewing(true);
+      setError(null);
+      try {
+        const preview = await previewGeneration(payload);
+        pendingGenerate.current = payload;
+        setPreviewData(preview);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Preview failed. Please try again.');
+      } finally {
+        setIsPreviewing(false);
+      }
+      return;
+    }
+
+    // Direct generation (review mode off)
+    setIsGenerating(true);
+    setError(null);
     try {
-      const result = await generateTrack({
-        vibes: [],
-        free_text: '',
-        blueprints,
-        bpm_lower: null,
-        bpm_upper: null,
-        lyrics: mode === 'lyrics' ? lyrics : '',
-        user_input,
-        generation_mode: generationMode,
-        music_length_ms: musicLengthMs,
-      });
+      const result = await generateTrack(payload);
       setGenerationResult(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
-  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs]);
+  }, [_buildGeneratePayload, reviewMode]);
+
+  const handleConfirmGenerate = useCallback(async () => {
+    const payload = pendingGenerate.current;
+    if (!payload) return;
+    setIsGenerating(true);
+    setError(null);
+    try {
+      const result = await generateTrack(payload);
+      setPreviewData(null);
+      pendingGenerate.current = null;
+      setGenerationResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, []);
 
   const handleReset = useCallback(() => {
     setSearchResults(null);
@@ -136,6 +183,8 @@ const Index = () => {
     setExtraVibes([]);
     setVibeInput('');
     setSelectedNodes([]);
+    setPreviewData(null);
+    pendingGenerate.current = null;
     setGraphResetKey(k => k + 1);
   }, []);
 
@@ -227,7 +276,7 @@ const Index = () => {
                 <div className="mt-4 flex flex-col gap-3">
                   {/* Generation mode toggle */}
                   <div>
-                    <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Mode</p>
+                    <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Generation Mode</p>
                     <div className="flex gap-1.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                       {(['simple', 'advanced'] as const).map(m => (
                         <button
@@ -247,6 +296,21 @@ const Index = () => {
                         </button>
                       ))}
                     </div>
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={generationMode}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-2 text-[10px] leading-4"
+                        style={{ color: 'rgba(255,255,255,0.38)' }}
+                      >
+                        {generationMode === 'simple'
+                          ? 'A single vivid prompt is synthesized from your blueprints and sent to ElevenLabs. Fast and great for most vibes.'
+                          : 'A structured plan with intro, verse, chorus, and outro sections — better for longer tracks and when adding lyrics.'}
+                      </motion.p>
+                    </AnimatePresence>
                   </div>
 
                   {/* Length selector */}
@@ -280,9 +344,40 @@ const Index = () => {
                 </div>
 
                 <div className="mt-3 flex flex-col gap-2">
+                  {/* Review mode toggle */}
+                  <button
+                    onClick={() => setReviewMode(v => !v)}
+                    className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl transition-all"
+                    style={{
+                      background: reviewMode ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
+                      border: reviewMode ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <div className="text-left">
+                      <p className="text-[10px] font-semibold" style={{ color: reviewMode ? 'rgba(165,168,255,0.9)' : 'rgba(255,255,255,0.55)' }}>
+                        Review before generating
+                      </p>
+                      <p className="text-[9px] mt-0.5" style={{ color: reviewMode ? 'rgba(165,168,255,0.5)' : 'rgba(255,255,255,0.25)' }}>
+                        Preview the {generationMode === 'advanced' ? 'composition plan' : 'prompt'} before it goes to ElevenLabs
+                      </p>
+                    </div>
+                    {/* Toggle pill */}
+                    <div
+                      className="relative flex-shrink-0 w-8 h-4 rounded-full transition-all"
+                      style={{ background: reviewMode ? 'rgba(99,102,241,0.7)' : 'rgba(255,255,255,0.12)' }}
+                    >
+                      <motion.div
+                        layout
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        className="absolute top-0.5 w-3 h-3 rounded-full bg-white"
+                        style={{ left: reviewMode ? '17px' : '2px' }}
+                      />
+                    </div>
+                  </button>
+
                   <button
                     onClick={handleGenerate}
-                    disabled={isGenerating || selectedBlueprints.length === 0}
+                    disabled={isGenerating || isPreviewing || selectedBlueprints.length === 0}
                     className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
@@ -290,7 +385,7 @@ const Index = () => {
                     }}
                   >
                     <Sparkles size={15} />
-                    {isGenerating ? 'Generating…' : `Generate Music · ${selectedBlueprints.length} blueprint${selectedBlueprints.length !== 1 ? 's' : ''}`}
+                    {isPreviewing ? 'Synthesizing…' : isGenerating ? 'Generating…' : reviewMode ? `Review & Generate · ${selectedBlueprints.length} blueprint${selectedBlueprints.length !== 1 ? 's' : ''}` : `Generate Music · ${selectedBlueprints.length} blueprint${selectedBlueprints.length !== 1 ? 's' : ''}`}
                   </button>
                   <button
                     onClick={handleReset}
@@ -514,6 +609,16 @@ const Index = () => {
         <p className="text-[10px] uppercase tracking-[0.24em] text-sky-200/55">{meta.label}</p>
         <p className="mt-1 text-sm leading-5 text-white/72">{meta.description}</p>
       </div>
+
+      {/* Review modal */}
+      {previewData && (
+        <ReviewModal
+          preview={previewData}
+          isGenerating={isGenerating}
+          onConfirm={handleConfirmGenerate}
+          onCancel={() => { setPreviewData(null); pendingGenerate.current = null; }}
+        />
+      )}
     </div>
   );
 };

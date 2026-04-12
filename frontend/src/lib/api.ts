@@ -73,6 +73,26 @@ export interface GenerateResponse {
   aggregated: AggregatedTraits;
 }
 
+export interface CompositionSection {
+  section_name: string;
+  positive_local_styles: string[];
+  negative_local_styles: string[];
+  duration_ms: number;
+  lines: string[];
+}
+
+export interface CompositionPlan {
+  positive_global_styles: string[];
+  negative_global_styles: string[];
+  sections: CompositionSection[];
+}
+
+export interface PreviewResponse {
+  generation_mode: 'simple' | 'advanced';
+  prompt_used: string;
+  composition_plan: CompositionPlan | null;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -92,6 +112,10 @@ export function searchBlueprints(req: SearchRequest): Promise<SearchResponse> {
 
 export function generateTrack(req: GenerateRequest): Promise<GenerateResponse> {
   return post<GenerateResponse>('/api/generate', req);
+}
+
+export function previewGeneration(req: GenerateRequest): Promise<PreviewResponse> {
+  return post<PreviewResponse>('/api/preview', req);
 }
 
 export function resolveAudioUrl(path: string): string {

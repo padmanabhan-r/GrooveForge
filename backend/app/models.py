@@ -72,3 +72,9 @@ class GenerateResponse(BaseModel):
     prompt_used: str
     blueprints: list[Blueprint]
     aggregated: AggregatedTraits
+
+
+class PreviewResponse(BaseModel):
+    generation_mode: Literal["simple", "advanced"]
+    prompt_used: str = ""          # populated for simple mode
+    composition_plan: dict | None = None  # populated for advanced mode

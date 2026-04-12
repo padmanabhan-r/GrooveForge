@@ -140,8 +140,8 @@ export default function GenerationResult({ result }: GenerationResultProps) {
         {[
           { label: 'Avg BPM', value: Math.round(aggregated.avg_bpm).toString() },
           { label: 'Key', value: aggregated.mode_key },
-          { label: 'Genre', value: aggregated.genre_cluster },
-          { label: 'Mood', value: aggregated.mood_cluster },
+          { label: 'Style', value: prompt_used.split(',')[0].trim() || aggregated.genre_cluster },
+          { label: 'Vocal', value: aggregated.vocal_type || '—' },
           { label: 'Energy', value: (aggregated.energy * 100).toFixed(0) + '%' },
         ].map(({ label, value }) => (
           <div

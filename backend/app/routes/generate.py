@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from app.generation import generate_from_composition_plan, generate_from_prompt
-from app.models import GenerateRequest, GenerateResponse, SearchRequest
+from app.models import GenerateRequest, GenerateResponse, PreviewResponse, SearchRequest
 from app.retrieval import aggregate_blueprints, search_blueprints
 from app.synthesis import synthesize_advanced, synthesize_simple
 
@@ -61,3 +61,31 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         blueprints=blueprints,
         aggregated=aggregated,
     )
+
+
+@router.post("/preview", response_model=PreviewResponse)
+async def preview(request: GenerateRequest) -> PreviewResponse:
+    """Synthesize the prompt or composition plan without calling ElevenLabs.
+
+    Used by the frontend Review mode so users can inspect what will be sent
+    before committing to a generation.
+    """
+    blueprints, _ = await _resolve_blueprints(request)
+
+    if request.generation_mode == "advanced":
+        plan = await synthesize_advanced(
+            user_input=request.user_input,
+            blueprints=blueprints,
+            music_length_ms=request.music_length_ms,
+            lyrics=request.lyrics or "",
+        )
+        logger.info("Preview (advanced): %d sections", len(plan.get("sections", [])))
+        return PreviewResponse(generation_mode="advanced", composition_plan=plan)
+
+    prompt, _ = await synthesize_simple(
+        user_input=request.user_input,
+        blueprints=blueprints,
+        music_length_ms=request.music_length_ms,
+    )
+    logger.info("Preview (simple): %d chars", len(prompt))
+    return PreviewResponse(generation_mode="simple", prompt_used=prompt)
