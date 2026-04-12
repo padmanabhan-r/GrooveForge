@@ -32,11 +32,33 @@ def _embed(text: str) -> list[float]:
     return vec.tolist()
 
 
-def _get_client() -> turbopuffer.AsyncTurbopuffer:
-    return turbopuffer.AsyncTurbopuffer(
+_tpuf_client: turbopuffer.AsyncTurbopuffer | None = None
+
+
+def get_tpuf_client() -> turbopuffer.AsyncTurbopuffer:
+    """Return the shared AsyncTurbopuffer client (initialised at startup)."""
+    if _tpuf_client is None:
+        raise RuntimeError("Turbopuffer client not initialised — call init_tpuf_client() first")
+    return _tpuf_client
+
+
+def init_tpuf_client() -> turbopuffer.AsyncTurbopuffer:
+    global _tpuf_client
+    _tpuf_client = turbopuffer.AsyncTurbopuffer(
         api_key=settings.turbopuffer_api_key,
         region=settings.turbopuffer_region,
     )
+    return _tpuf_client
+
+
+async def close_tpuf_client() -> None:
+    global _tpuf_client
+    if _tpuf_client is not None:
+        try:
+            await _tpuf_client.close()
+        except Exception:
+            pass
+        _tpuf_client = None
 
 
 def _build_query_text(request: SearchRequest) -> str:
@@ -214,7 +236,7 @@ async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
     if request.vocal_type:
         filters.append(["vocal_type", "Eq", request.vocal_type])
 
-    client = _get_client()
+    client = get_tpuf_client()
     (lp_ann, lp_bm25), (fma_ann, fma_bm25) = await asyncio.gather(
         _hybrid_query_namespace(
             client, settings.active_ns_lp, query_text, query_vector, request.top_k, filters
@@ -233,7 +255,7 @@ async def search_by_artist(artist: str, top_k: int = 8) -> list[Blueprint]:
     query_vector = await asyncio.get_event_loop().run_in_executor(
         None, _embed, artist
     )
-    client = _get_client()
+    client = get_tpuf_client()
     (lp_ann, lp_bm25), (fma_ann, fma_bm25) = await asyncio.gather(
         _hybrid_query_namespace(client, settings.active_ns_lp, artist, query_vector, top_k, []),
         _hybrid_query_namespace(client, settings.active_ns_fma, artist, query_vector, top_k, []),
@@ -245,7 +267,7 @@ async def search_by_artist(artist: str, top_k: int = 8) -> list[Blueprint]:
 async def warm_cache() -> None:
     """Pre-flight query to warm both namespace caches on server startup."""
     try:
-        client = _get_client()
+        client = get_tpuf_client()
         warm_vec = [0.0] * 384
         await asyncio.gather(
             client.namespace(settings.active_ns_lp).query(

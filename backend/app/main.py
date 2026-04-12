@@ -14,12 +14,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm namespace caches and pre-load embedding model on startup
-    from app.retrieval import _get_embedder, warm_cache
+    from app.retrieval import _get_embedder, close_tpuf_client, init_tpuf_client, warm_cache
 
+    init_tpuf_client()
     await asyncio.get_event_loop().run_in_executor(None, _get_embedder)
     asyncio.create_task(warm_cache())
     yield
+    await close_tpuf_client()
 
 
 app = FastAPI(title="GrooveForge API", version="0.1.0", lifespan=lifespan)
