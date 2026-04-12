@@ -1,3 +1,4 @@
+import React from 'react';
 import { getNodeLabel, getRootForNode } from '@/data/graphNodes';
 import { X, Sparkles } from 'lucide-react';
 
@@ -20,11 +21,13 @@ interface VibePanelProps {
   onGenerate: () => void;
   isGenerating: boolean;
   horizontal?: boolean;
+  hideButton?: boolean;
   title?: string;
   buttonLabel?: string;
   emptyMessage?: string;
   minSelections?: number;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export default function VibePanel({
@@ -33,11 +36,13 @@ export default function VibePanel({
   onGenerate,
   isGenerating,
   horizontal,
+  hideButton = false,
   title = 'Your Vibe',
   buttonLabel = 'Generate Track',
   emptyMessage = 'Select nodes on the graph to build your blueprint.',
   minSelections = 2,
   className = '',
+  children,
 }: VibePanelProps) {
   const isDisabled = isGenerating || selectedNodes.length < minSelections;
 
@@ -83,7 +88,7 @@ export default function VibePanel({
         <span className="text-metric text-muted-foreground">{selectedNodes.length}</span>
       </div>
       {selectedNodes.length > 0 ? (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2">
           {selectedNodes.map(id => {
             const root = getRootForNode(id);
             const colorClass = root ? (ROOT_COLORS[root.id] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
@@ -100,20 +105,23 @@ export default function VibePanel({
           })}
         </div>
       ) : (
-        <div className="mb-4 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm leading-6 text-white/58">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-5 text-sm leading-6 text-white/58">
           {emptyMessage}
         </div>
       )}
-      <button
-        onClick={onGenerate}
-        disabled={isDisabled}
-        className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm
-          hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed
-          flex items-center justify-center gap-2 glow-ring"
-      >
-        <Sparkles size={16} />
-        {isGenerating ? 'Generating...' : buttonLabel}
-      </button>
+      {children}
+      {!hideButton && (
+        <button
+          onClick={onGenerate}
+          disabled={isDisabled}
+          className="mt-4 w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm
+            hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed
+            flex items-center justify-center gap-2 glow-ring"
+        >
+          <Sparkles size={16} />
+          {isGenerating ? 'Generating...' : buttonLabel}
+        </button>
+      )}
     </div>
   );
 }
