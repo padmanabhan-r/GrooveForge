@@ -50,7 +50,9 @@ class AdvancedOutput(BaseModel):
 def _blueprint_context(blueprints: list[Blueprint]) -> str:
     """Format retrieved blueprints into a readable context block for Gemini.
 
-    Artist names are deliberately excluded (artist firewall rule).
+    Artist names, song titles, and free-text descriptions are deliberately excluded
+    — they may contain real artist/track references that must never reach ElevenLabs.
+    Only structured numerical/categorical features are included.
     """
     lines: list[str] = []
     for i, bp in enumerate(blueprints, 1):
@@ -75,8 +77,6 @@ def _blueprint_context(blueprints: list[Blueprint]) -> str:
             parts.append(f"  mood={bp.mood}")
         if bp.themes:
             parts.append(f"  themes={bp.themes}")
-        if bp.text_description:
-            parts.append(f"  description={bp.text_description[:120]}")
         lines.append("\n".join(parts))
     return "\n\n".join(lines)
 
@@ -151,7 +151,8 @@ async def synthesize_simple(
         "- The user's input has PRIMARY importance — honour their genre/mood/key/tempo choices exactly.\n"
         "- Use the retrieved blueprint traits to add nuance, texture, and specificity.\n"
         "- Do NOT fabricate traits absent from both the input and the blueprints.\n"
-        "- Do NOT include any artist names.\n"
+        "- NEVER mention any real artist names, band names, song titles, or album names. "
+        "Describe sound attributes only (genre, instrumentation, mood, tempo, energy).\n"
         "- Keep the prompt under 150 words, vivid and concrete.\n"
         f"- The track should be approximately {length_s} seconds long.\n\n"
         "Respond with a JSON object matching the schema:\n"
@@ -209,7 +210,9 @@ async def synthesize_advanced(
         "- The user's input has PRIMARY importance — honour genre/mood/key/tempo exactly.\n"
         "- Blueprint traits provide nuance — use acousticness, energy, valence, danceability, "
         "instrumentalness, liveness, speechiness, and loudness to inform style descriptors.\n"
-        "- Do NOT fabricate traits. Do NOT include artist names.\n"
+        "- Do NOT fabricate traits.\n"
+        "- NEVER mention any real artist names, band names, song titles, or album names. "
+        "Describe sound attributes only (genre, instrumentation, mood, tempo, energy).\n"
         "- Distribute duration_ms across sections so they sum to exactly "
         f"{music_length_ms} ms (≈ {length_s}s total).\n"
         "- Typical structure: intro ~10%, verse ~25%, chorus ~20%, bridge ~15%, outro ~10% "
