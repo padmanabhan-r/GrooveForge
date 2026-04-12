@@ -16,7 +16,7 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
   },
   text: {
     label: 'Free Text',
-    description: 'Describe your sound in plain language. We\'ll embed your query and retrieve matching musical blueprints.',
+    description: 'Describe anything — artist names, song titles, genres, moods, eras. We\'ll search the blueprint index for the closest matches and generate from there.',
   },
   lyrics: {
     label: 'Lyrics to Music',

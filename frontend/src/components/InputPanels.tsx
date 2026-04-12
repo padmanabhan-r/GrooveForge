@@ -1,5 +1,5 @@
 import { AppMode } from './ModeSwitcher';
-import { Search, Music, AudioWaveform, Sparkles } from 'lucide-react';
+import { Music, AudioWaveform, Sparkles } from 'lucide-react';
 
 interface InputPanelsProps {
   mode: AppMode;
@@ -29,26 +29,29 @@ export default function InputPanels({ mode, freeText, onFreeTextChange, lyrics, 
           <div className="flex flex-col gap-5 w-full max-w-xl">
             <div>
               <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55 mb-1">Input</p>
-              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Describe Your Vibe</h2>
+              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Describe The Music You Want To Create</h2>
               <p className="mt-2 text-sm leading-6 text-white/55">
-                Write naturally — genre, mood, tempo, instruments, era. The more detail you give, the closer the match.
+                Say anything — artist names, song titles, genres, moods, eras, vibes. We'll search the blueprint index for the closest matches and build from there.
               </p>
             </div>
 
-            <div className="relative mt-2">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-              <input
-                type="text"
-                value={freeText}
-                onChange={e => onFreeTextChange(e.target.value)}
-                placeholder="A nostalgic summer drive at sunset with synths and soft drums..."
-                className="w-full pl-11 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-white/28 focus:outline-none focus:ring-1 focus:ring-indigo-500/60"
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                }}
-              />
-            </div>
+            <textarea
+              value={freeText}
+              onChange={e => onFreeTextChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && freeText.trim()) {
+                  e.preventDefault();
+                  onSearch();
+                }
+              }}
+              placeholder={"Something like Radiohead's OK Computer but more danceable, melancholic synthpop, 90 BPM, minor key..."}
+              rows={5}
+              className="w-full px-4 py-4 rounded-2xl text-sm text-white placeholder:text-white/28 focus:outline-none focus:ring-1 focus:ring-indigo-500/60 resize-none"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            />
 
             <button
               onClick={onSearch}
