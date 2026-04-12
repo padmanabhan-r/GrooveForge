@@ -48,6 +48,7 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [generationMode, setGenerationMode] = useState<'simple' | 'advanced'>('simple');
   const [musicLengthMs, setMusicLengthMs] = useState(90000);
+  const [graphResetKey, setGraphResetKey] = useState(0);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -134,6 +135,8 @@ const Index = () => {
     setError(null);
     setExtraVibes([]);
     setVibeInput('');
+    setSelectedNodes([]);
+    setGraphResetKey(k => k + 1);
   }, []);
 
   const meta = MODE_META[mode];
@@ -158,7 +161,7 @@ const Index = () => {
           {/* Left: main panel */}
           <div className="relative min-h-[420px]">
             {mode === 'graph'
-              ? <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => setSelectedNodes([])} />
+              ? <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => { setSelectedNodes([]); setGraphResetKey(k => k + 1); }} resetKey={graphResetKey} />
               : <InputPanels
                   mode={mode}
                   freeText={freeText}

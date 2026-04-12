@@ -9,6 +9,7 @@ interface VibeGraphProps {
   selectedNodes: string[];
   onToggleNode: (id: string) => void;
   onClearSelections: () => void;
+  resetKey?: number;
 }
 
 // Content coordinate space: 1600 × 900
@@ -222,7 +223,7 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelections }: VibeGraphProps) {
+export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelections, resetKey }: VibeGraphProps) {
   const [expandedRoots, setExpandedRoots] = useState<Set<string>>(new Set());
   const [expandedL1s,   setExpandedL1s  ] = useState<Set<string>>(new Set());
   const [hovered,       setHovered      ] = useState<string | null>(null);
@@ -238,6 +239,14 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
   const viewRef   = useRef(view);
   viewRef.current = view;
   const panOrigin = useRef({ mx: 0, my: 0, vx: 0, vy: 0 });
+
+  // Collapse all expanded bubbles when parent signals a reset
+  useEffect(() => {
+    if (resetKey === undefined) return;
+    setExpandedRoots(new Set());
+    setExpandedL1s(new Set());
+    setNodePositions({});
+  }, [resetKey]);
 
   const anyExpanded    = expandedRoots.size > 0;
   const selectionCount = selectedNodes.length;
@@ -709,14 +718,18 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
         </button>
         <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '2px 0' }} />
         <button
-          onClick={() => setNodePositions({})}
+          onClick={() => { setNodePositions({}); setExpandedRoots(new Set()); setExpandedL1s(new Set()); }}
           title="Reset positions"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
           className="w-7 h-7 rounded-md text-xs flex items-center justify-center hover:bg-white/10 transition-colors">
           ↺
         </button>
         <button
-          onClick={onClearSelections}
+          onClick={() => {
+            setExpandedRoots(new Set());
+            setExpandedL1s(new Set());
+            onClearSelections();
+          }}
           title="Clear selections"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
           className="w-7 h-7 rounded-md text-xs flex items-center justify-center hover:bg-white/10 transition-colors">
