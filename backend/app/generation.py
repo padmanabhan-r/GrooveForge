@@ -52,8 +52,8 @@ async def generate_from_prompt(
 async def generate_from_composition_plan(
     plan: dict,
     aggregated: AggregatedTraits,
-) -> tuple[str, str]:
-    """Generate audio from a composition plan. Returns (audio_url, prompt_used)."""
+) -> tuple[str, str, dict]:
+    """Generate audio from a composition plan. Returns (audio_url, prompt_used, plan)."""
     audio_id = uuid.uuid4().hex
     output_path = AUDIO_DIR / f"{audio_id}.mp3"
 
@@ -65,4 +65,4 @@ async def generate_from_composition_plan(
 
     audio_url = f"/static/audio/{audio_id}.mp3"
     logger.info("Generated audio via composition plan: %s", audio_url)
-    return audio_url, prompt_used
+    return audio_url, prompt_used, plan

@@ -5,7 +5,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from app.config import settings
-from app.models import AggregatedTraits, Blueprint
+from app.models import AggregatedTraits, Blueprint, LyricsAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +275,86 @@ async def synthesize_advanced(
     except Exception:
         logger.exception("Gemini synthesize_advanced failed — using fallback plan")
         return _fallback_plan(user_input, blueprints, music_length_ms, lyrics)
+
+
+# ---------------------------------------------------------------------------
+# Lyrics analysis
+# ---------------------------------------------------------------------------
+
+class _LyricsAnalysisOutput(BaseModel):
+    mood: list[str]
+    themes: list[str]
+    energy: float
+    suggested_genres: list[str]
+    vocal_style: str
+    search_query: str
+
+
+def _fallback_lyrics_analysis(lyrics: str) -> LyricsAnalysis:
+    lower = lyrics.lower()
+    mood: list[str] = ["introspective"]
+    if any(w in lower for w in ("love", "heart", "miss", "want", "hold")):
+        mood.append("romantic")
+    if any(w in lower for w in ("dark", "shadow", "pain", "alone", "break", "cry")):
+        mood.append("melancholic")
+    if any(w in lower for w in ("dance", "move", "beat", "alive", "fire", "run")):
+        mood.append("energetic")
+    genres = ["indie pop"]
+    search_query = " ".join(mood[:3]) + " " + " ".join(genres) + " vocal music"
+    return LyricsAnalysis(
+        mood=mood[:3],
+        themes=["personal narrative", "emotions"],
+        energy=0.5,
+        suggested_genres=genres,
+        vocal_style="expressive vocals",
+        search_query=search_query,
+    )
+
+
+async def analyze_lyrics(lyrics: str) -> LyricsAnalysis:
+    """Use Gemini to extract musical traits from lyrics for blueprint retrieval."""
+    if not settings.gemini_api_key:
+        logger.warning("No Gemini key — using fallback lyrics analysis")
+        return _fallback_lyrics_analysis(lyrics)
+
+    system_prompt = (
+        "You are a music supervisor analyzing song lyrics to find the right musical setting.\n\n"
+        "Given lyrics, extract:\n"
+        "- mood: 2–4 emotional adjectives (e.g. melancholic, yearning, defiant)\n"
+        "- themes: 2–4 lyrical themes (e.g. loss, city life, rebellion, nostalgia)\n"
+        "- energy: float 0.0–1.0 (0=ambient/slow, 1=intense/driving)\n"
+        "- suggested_genres: 2–3 music genres that would suit these lyrics\n"
+        "- vocal_style: a short phrase describing ideal vocal delivery\n"
+        "- search_query: a concise phrase (under 20 words) of genre + mood + theme keywords "
+        "suitable for searching a music database — no artist names, no song titles\n\n"
+        "Respond with a JSON object matching the schema."
+    )
+
+    try:
+        client = _get_client()
+        response = await client.aio.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=f"Lyrics:\n{lyrics}",
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                response_schema=_LyricsAnalysisOutput,
+                temperature=0.5,
+            ),
+        )
+        parsed = _LyricsAnalysisOutput.model_validate_json(response.text or "{}")
+        energy = max(0.0, min(1.0, float(parsed.energy)))
+        return LyricsAnalysis(
+            mood=parsed.mood,
+            themes=parsed.themes,
+            energy=energy,
+            suggested_genres=parsed.suggested_genres,
+            vocal_style=parsed.vocal_style,
+            search_query=parsed.search_query,
+        )
+    except Exception:
+        logger.exception("Gemini analyze_lyrics failed — using fallback")
+        return _fallback_lyrics_analysis(lyrics)
 
 
 # ---------------------------------------------------------------------------

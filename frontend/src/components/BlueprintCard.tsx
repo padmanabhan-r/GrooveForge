@@ -50,7 +50,7 @@ export default function BlueprintCard({ blueprint: bp, rank, selected, onToggle,
           </span>
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {bp.source || 'unknown'}
+              {bp.source === 'lp_msd' ? 'Last.fm / Million Song Database' : bp.source === 'fma' ? 'Free Music Archive' : bp.source || 'unknown'}
             </span>
             {/* Expand toggle — stops propagation so it doesn't toggle selection */}
             <button

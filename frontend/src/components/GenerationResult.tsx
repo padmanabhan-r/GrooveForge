@@ -1,14 +1,64 @@
 import { useRef } from 'react';
-import { Play, Pause, Music } from 'lucide-react';
+import { Play, Pause, Music, Download } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { GenerateResponse, resolveAudioUrl } from '@/lib/api';
+import { CompositionPlan, GenerateResponse, resolveAudioUrl } from '@/lib/api';
 import BlueprintCard from './BlueprintCard';
 
 interface GenerationResultProps {
   result: GenerateResponse;
 }
 
-function MiniPlayer({ audioUrl, promptUsed }: { audioUrl: string; promptUsed: string }) {
+function CompositionPlanView({ plan }: { plan: CompositionPlan }) {
+  return (
+    <div className="flex flex-col gap-2 text-[11px] leading-5" style={{ color: 'rgba(255,255,255,0.58)' }}>
+      {plan.positive_global_styles.length > 0 && (
+        <div>
+          <span className="uppercase tracking-[0.18em] text-[9px]" style={{ color: 'rgba(165,168,255,0.65)' }}>
+            Global styles
+          </span>
+          <p className="mt-0.5">{plan.positive_global_styles.join(', ')}</p>
+        </div>
+      )}
+      {plan.negative_global_styles.length > 0 && (
+        <div>
+          <span className="uppercase tracking-[0.18em] text-[9px]" style={{ color: 'rgba(255,120,120,0.55)' }}>
+            Avoid
+          </span>
+          <p className="mt-0.5">{plan.negative_global_styles.join(', ')}</p>
+        </div>
+      )}
+      {plan.sections.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-1">
+          <span className="uppercase tracking-[0.18em] text-[9px]" style={{ color: 'rgba(165,168,255,0.65)' }}>
+            Sections
+          </span>
+          {plan.sections.map((s, i) => (
+            <div key={i} className="rounded-lg px-2.5 py-1.5 border border-white/6" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="font-semibold capitalize" style={{ color: 'rgba(255,255,255,0.78)', fontFamily: 'JetBrains Mono, monospace' }}>
+                  {s.section_name}
+                </span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'rgba(255,255,255,0.32)', fontSize: '9px' }}>
+                  {(s.duration_ms / 1000).toFixed(0)}s
+                </span>
+              </div>
+              {s.positive_local_styles.length > 0 && (
+                <p>{s.positive_local_styles.join(', ')}</p>
+              )}
+              {s.lines.length > 0 && (
+                <p className="mt-0.5 italic" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                  "{s.lines.slice(0, 2).join(' / ')}{s.lines.length > 2 ? '…' : ''}"
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniPlayer({ audioUrl, promptUsed, compositionPlan }: { audioUrl: string; promptUsed: string; compositionPlan: CompositionPlan | null }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -101,31 +151,47 @@ function MiniPlayer({ audioUrl, promptUsed }: { audioUrl: string; promptUsed: st
         </div>
       </div>
 
-      <button
-        onClick={() => setShowPrompt(p => !p)}
-        className="flex items-center gap-1.5 self-start transition-opacity hover:opacity-80"
-        style={{ color: showPrompt ? 'rgba(165,168,255,0.85)' : 'rgba(255,255,255,0.32)' }}
-      >
-        <Music size={10} />
-        <span className="text-[9px] uppercase tracking-[0.2em]">
-          {showPrompt ? 'Hide' : 'Show'} generation prompt
-        </span>
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setShowPrompt(p => !p)}
+          className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
+          style={{ color: showPrompt ? 'rgba(165,168,255,0.85)' : 'rgba(255,255,255,0.32)' }}
+        >
+          <Music size={10} />
+          <span className="text-[9px] uppercase tracking-[0.2em]">
+            {showPrompt ? 'Hide' : 'Show'} generation prompt
+          </span>
+        </button>
+
+        <a
+          href={src}
+          download
+          className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
+          style={{ color: 'rgba(255,255,255,0.32)' }}
+          title="Download MP3"
+        >
+          <Download size={10} />
+          <span className="text-[9px] uppercase tracking-[0.2em]">Save</span>
+        </a>
+      </div>
 
       {showPrompt && (
-        <p
-          className="text-[11px] leading-5 rounded-xl px-3 py-2 border border-white/8"
-          style={{ background: 'rgba(99,102,241,0.06)', color: 'rgba(255,255,255,0.58)' }}
+        <div
+          className="rounded-xl px-3 py-2.5 border border-white/8"
+          style={{ background: 'rgba(99,102,241,0.06)' }}
         >
-          {promptUsed}
-        </p>
+          {compositionPlan
+            ? <CompositionPlanView plan={compositionPlan} />
+            : <p className="text-[11px] leading-5" style={{ color: 'rgba(255,255,255,0.58)' }}>{promptUsed}</p>
+          }
+        </div>
       )}
     </div>
   );
 }
 
 export default function GenerationResult({ result }: GenerationResultProps) {
-  const { audio_url, prompt_used, blueprints, aggregated } = result;
+  const { audio_url, prompt_used, composition_plan, blueprints, aggregated } = result;
 
   return (
     <div className="flex flex-col gap-5 w-full">
@@ -170,7 +236,7 @@ export default function GenerationResult({ result }: GenerationResultProps) {
       </div>
 
       {/* Audio player */}
-      <MiniPlayer audioUrl={audio_url} promptUsed={prompt_used} />
+      <MiniPlayer audioUrl={audio_url} promptUsed={prompt_used} compositionPlan={composition_plan} />
 
       {/* Blueprint reasoning trail */}
       {blueprints.length > 0 && (

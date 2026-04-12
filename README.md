@@ -40,36 +40,44 @@ Enter an artist as a shortcut into a musical neighborhood. The artist name is us
 
 ```
 Browser (React 18 + TypeScript + Vite)
-  ├─ Graph UI (react-flow nodes: Genre / Mood / Key / Tempo / Instrumentation / Theme)
-  ├─ Mode switcher: Graph | Text | Lyrics | Remix | Artist
-  ├─ Blueprint reasoning trail (retrieved cards animate in)
-  ├─ Audio player + waveform visualizer
-  └─ POST /api/search  +  POST /api/generate
+  ├─ Mode switcher: Graph | Text | Lyrics | Sound
+  ├─ VibeGraph (react-flow): Genre / Mood / Key / Tempo / Instrumentation / Theme nodes
+  ├─ Free-text vibe search panel
+  ├─ Lyrics-to-Music panel (analyze → blueprint retrieval → composition plan)
+  ├─ BlueprintDeck: toggle blueprints, generation mode (Simple/Advanced), track length
+  ├─ ReviewModal: preview prompt/plan before sending to ElevenLabs
+  ├─ MiniPlayer: play/pause, scrub, time display, MP3 download
+  ├─ CompositionPlanView: global styles + per-section cards with lyrics preview
+  ├─ LyricsAnalysisCard: mood/theme chips, suggested genres, energy bar, vocal style
+  └─ Blueprint reasoning trail: horizontal scroll of blueprint cards below player
 
 Backend (FastAPI)
   POST /api/search
-    └── [concurrent] Turbopuffer hybrid retrieval across both namespaces
-          └── LLM reads all retrieved rows → synthesizes unified blueprint
+    └── [concurrent] Turbopuffer hybrid retrieval (ANN + BM25 + metadata filters, RRF merge)
+          └── Blueprint aggregation → { blueprints[], aggregated{} }
 
   POST /api/generate
     ├── [concurrent] Turbopuffer retrieval across both namespaces
-    ├── LLM blueprint synthesis (assembles blueprint + composition plan from retrieved data)
+    ├── Gemini synthesis → simple text prompt or structured composition plan
     └── ElevenLabs Music API → audio stream
-          └── { audio_url, prompt_used, blueprints[], aggregated{} }
+          └── { audio_url, prompt_used, composition_plan, blueprints[], aggregated{} }
 
-Data Pipeline (one-time, already run)
-  Raw tables → 2 PostgreSQL views → 6 Turbopuffer namespaces (2 per embedding model)
-    lp_msd_minilm    — 513,977 records, 384-dim   (MiniLM, CPU — built first)
-    fma_minilm       — 106,574 records, 384-dim   (MiniLM, CPU — built first)
-    lp_msd_nemotron  — 513,977 records, 4096-dim  (llama-nemotron, Kaggle T4 GPU)
-    fma_nemotron     — 106,574 records, 4096-dim  (llama-nemotron, Kaggle T4 GPU)
-    lp_msd_clap      — 513,977 records, 512-dim   (CLAP text encoder — stretch goal)
-    fma_clap         — 106,574 records, 512-dim   (CLAP text encoder — stretch goal)
-  Active pair (config-driven): minilm → nemotron once indexed
-  CLAP pair: audio-to-audio "Sounds Like" mode only
+  POST /api/preview
+    └── Same as /api/generate but skips ElevenLabs — returns prompt/plan for review
+
+  POST /api/analyze-lyrics
+    ├── Gemini extracts mood, themes, energy, genres, vocal_style, search_query
+    └── Turbopuffer retrieval on search_query → { analysis, blueprints[], aggregated{} }
+
+  GET /api/health
+
+Turbopuffer namespaces (active):
+  lp_msd_minilm  — 513,977 records, 384-dim (all-MiniLM-L6-v2)
+  fma_minilm     — 106,574 records, 384-dim (all-MiniLM-L6-v2)
+  Both queried concurrently via asyncio.gather, merged with RRF
 ```
 
-The active namespace pair is queried concurrently via `asyncio.gather`. The LLM sees the full retrieved pool and assembles the blueprint — `lp_msd_*` contributes captions and audio structure, `fma_*` contributes genre labels and energy/valence signals. Switch from MiniLM to Nemotron by changing two config values.
+The two namespaces are queried concurrently via `asyncio.gather`. `lp_msd_minilm` contributes captions and audio structure from LP-MusicCaps-MSD; `fma_minilm` contributes genre labels and energy/valence signals from the Free Music Archive.
 
 ---
 
@@ -156,9 +164,9 @@ ModeTab: Graph | Text | Lyrics | Remix | Artist — always visible
 | Animation | Framer Motion |
 | Backend | FastAPI (Python), `uv` |
 | Vector retrieval | Turbopuffer — 6 namespaces, ANN + BM25 hybrid, metadata filters |
-| LLM synthesis | Anthropic Claude (blueprint + composition plan synthesis) |
+| LLM synthesis | Google Gemini (gemini-2.5-flash) — blueprint synthesis, composition plans, lyrics analysis |
 | Music generation | ElevenLabs Music API (prompt + composition-plan modes) |
-| Embeddings | `all-MiniLM-L6-v2` (384-dim, CPU — primary) · `nvidia/llama-embed-nemotron-8b` (4096-dim, Kaggle T4) · CLAP (512-dim, audio-to-audio) |
+| Embeddings | `all-MiniLM-L6-v2` (384-dim, CPU) |
 | Data sources | LP-MusicCaps-MSD (513K), MSD full (1M), FMA (106K), MusicCaps (5.5K) |
 | Deployment | Docker + GCP Cloud Run |
 
@@ -185,7 +193,7 @@ npm run dev
 ```
 ELEVENLABS_API_KEY=...
 TURBOPUFFER_API_KEY=...
-ANTHROPIC_API_KEY=...
+GEMINI_API_KEY=...
 ```
 
 **Data pipeline** (run once):
@@ -203,26 +211,50 @@ uv run python scripts/embed_blueprints.py    # embeds + upserts into Turbopuffer
 POST /api/search
 {
   "vibes": ["moody", "synthwave"],
+  "free_text": "",
   "bpm_lower": 100, "bpm_upper": 130,
   "key": "C minor",
   "vocal_type": "instrumental",
-  "free_text": ""
+  "top_k": 8
 }
 → { "blueprints": [...], "aggregated": { "avg_bpm": 118, "mode_key": "C minor", ... } }
 
 POST /api/generate
 {
-  "blueprints": [...],         // from /api/search, or pass vibes directly
+  "blueprints": [...],
   "vibes": ["moody", "synthwave"],
+  "free_text": "",
   "bpm_lower": 100, "bpm_upper": 130,
-  "lyrics": "",                // optional — songwriter mode
-  "mode": "prompt"             // "prompt" | "composition_plan"
+  "lyrics": "",                    // songwriter mode — goes into ElevenLabs `lines` only
+  "user_input": "moody synthwave",
+  "generation_mode": "simple",     // "simple" | "advanced"
+  "music_length_ms": 60000
 }
 → {
     "audio_url": "/static/audio/abc123.mp3",
     "prompt_used": "Moody synthwave instrumental, 118 BPM, C minor...",
+    "composition_plan": null,       // populated in advanced mode
     "blueprints": [...],
     "aggregated": { "avg_bpm": 118, "mode_key": "C minor", ... }
+  }
+
+POST /api/preview
+// Same body as /api/generate — returns synthesized prompt/plan without calling ElevenLabs
+→ { "generation_mode": "simple", "prompt_used": "...", "composition_plan": null }
+
+POST /api/analyze-lyrics
+{ "lyrics": "In the city lights at 2am..." }
+→ {
+    "analysis": {
+      "mood": ["melancholic", "atmospheric"],
+      "themes": ["city", "night", "loneliness"],
+      "energy": 0.45,
+      "suggested_genres": ["synthwave", "dream pop"],
+      "vocal_style": "breathy, introspective",
+      "search_query": "melancholic atmospheric city night synthwave"
+    },
+    "blueprints": [...],
+    "aggregated": { "avg_bpm": 112, "mode_key": "A minor", ... }
   }
 
 GET /api/health   → system status

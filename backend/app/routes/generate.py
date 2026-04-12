@@ -33,6 +33,7 @@ async def _resolve_blueprints(request: GenerateRequest):
 async def generate(request: GenerateRequest) -> GenerateResponse:
     blueprints, aggregated = await _resolve_blueprints(request)
 
+    composition_plan = None
     if request.generation_mode == "advanced":
         plan = await synthesize_advanced(
             user_input=request.user_input,
@@ -40,7 +41,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
             music_length_ms=request.music_length_ms,
             lyrics=request.lyrics or "",
         )
-        audio_url, prompt_used = await generate_from_composition_plan(plan, aggregated)
+        audio_url, prompt_used, composition_plan = await generate_from_composition_plan(plan, aggregated)
     else:
         prompt, _ = await synthesize_simple(
             user_input=request.user_input,
@@ -58,6 +59,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         audio_url=audio_url,
         prompt_used=prompt_used,
+        composition_plan=composition_plan,
         blueprints=blueprints,
         aggregated=aggregated,
     )
