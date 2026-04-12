@@ -35,7 +35,7 @@ export default function VibePanel({
   horizontal,
   title = 'Your Vibe',
   buttonLabel = 'Generate Track',
-  emptyMessage = 'Select planets on the graph to build your blueprint.',
+  emptyMessage = 'Select nodes on the graph to build your blueprint.',
   minSelections = 2,
   className = '',
 }: VibePanelProps) {

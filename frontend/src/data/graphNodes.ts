@@ -141,12 +141,13 @@ export const roots: RootDef[] = [
   {
     id: 'key', label: 'Key & Mode', hue: 165, icon: '🎵',
     children: [
-      { id: 'k-major', label: 'Major', query: { key: 'major', free_text: 'bright happy major key' }, children: [] },
-      { id: 'k-minor', label: 'Minor', query: { key: 'minor', free_text: 'dark emotional minor key' }, children: [] },
-      { id: 'k-dorian', label: 'Dorian', query: { key: 'dorian', free_text: 'dorian mode jazzy funky' }, children: [] },
-      { id: 'k-phrygian', label: 'Phrygian', query: { key: 'phrygian', free_text: 'phrygian flamenco dark exotic' }, children: [] },
-      { id: 'k-mixolydian', label: 'Mixolydian', query: { key: 'mixolydian', free_text: 'mixolydian bluesy rock modal' }, children: [] },
-      { id: 'k-lydian', label: 'Lydian', query: { key: 'lydian', free_text: 'lydian dreamy floating otherworldly' }, children: [] },
+      { id: 'k-ionian',     label: 'Ionian',     query: { key: 'ionian',     free_text: 'ionian major scale bright happy uplifting C major' },         children: [] },
+      { id: 'k-dorian',     label: 'Dorian',     query: { key: 'dorian',     free_text: 'dorian mode minor jazzy funky soulful D minor' },             children: [] },
+      { id: 'k-phrygian',   label: 'Phrygian',   query: { key: 'phrygian',   free_text: 'phrygian dark spanish flamenco middle eastern E minor' },      children: [] },
+      { id: 'k-lydian',     label: 'Lydian',     query: { key: 'lydian',     free_text: 'lydian bright dreamy ethereal floating F major' },             children: [] },
+      { id: 'k-mixolydian', label: 'Mixolydian', query: { key: 'mixolydian', free_text: 'mixolydian bluesy rock dominant G major' },                    children: [] },
+      { id: 'k-aeolian',    label: 'Aeolian',    query: { key: 'aeolian',    free_text: 'aeolian natural minor scale emotional dark A minor' },         children: [] },
+      { id: 'k-locrian',    label: 'Locrian',     query: { key: 'locrian',    free_text: 'locrian diminished tense unstable dissonant B diminished' },   children: [] },
     ],
   },
   {
@@ -154,9 +155,6 @@ export const roots: RootDef[] = [
     children: [
       { id: 'v-female', label: 'Female', query: { vocal_type: 'female vocals' }, children: [] },
       { id: 'v-male', label: 'Male', query: { vocal_type: 'male vocals' }, children: [] },
-      { id: 'v-chorus', label: 'Chorus', query: { vocal_type: 'chorus', free_text: 'choir harmonies vocal layers' }, children: [] },
-      { id: 'v-instrumental', label: 'Instrumental', query: { vocal_type: 'instrumental', free_text: 'no vocals pure instruments' }, children: [] },
-      { id: 'v-rap', label: 'Rap', query: { vocal_type: 'rap', free_text: 'rap flow spoken word rhymes' }, children: [] },
     ],
   },
   {
@@ -177,7 +175,7 @@ export const roots: RootDef[] = [
     ],
   },
   {
-    id: 'texture', label: 'Texture', hue: 155, icon: '🌿',
+    id: 'texture', label: 'Texture', hue: 300, icon: '🌿',
     children: [
       { id: 'x-acoustic', label: 'Acoustic', query: { free_text: 'acoustic natural organic instruments' }, children: [
         { id: 'x-raw', label: 'Raw', query: { free_text: 'raw recorded live room reverb' } },

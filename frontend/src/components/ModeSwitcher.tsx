@@ -1,13 +1,12 @@
-import { GitBranch, Type, Music, Shuffle, Mic } from 'lucide-react';
+import { Network, MessageSquare, FileText, AudioWaveform } from 'lucide-react';
 
-export type AppMode = 'graph' | 'text' | 'lyrics' | 'remix' | 'artist';
+export type AppMode = 'graph' | 'text' | 'lyrics' | 'sound';
 
-const modes: { id: AppMode; label: string; icon: typeof GitBranch }[] = [
-  { id: 'graph', label: 'Graph', icon: GitBranch },
-  { id: 'text', label: 'Text', icon: Type },
-  { id: 'lyrics', label: 'Lyrics', icon: Music },
-  { id: 'remix', label: 'Remix', icon: Shuffle },
-  { id: 'artist', label: 'Artist', icon: Mic },
+const modes: { id: AppMode; label: string; icon: typeof Network }[] = [
+  { id: 'graph',  label: 'Vibe Graph',   icon: Network        },
+  { id: 'text',   label: 'Free Text',    icon: MessageSquare  },
+  { id: 'lyrics', label: 'Lyrics',       icon: FileText       },
+  { id: 'sound',  label: 'Sound Match',  icon: AudioWaveform  },
 ];
 
 interface ModeSwitcherProps {

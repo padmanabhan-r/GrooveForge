@@ -8,12 +8,14 @@ import { roots, BubbleNodeDef } from '@/data/graphNodes';
 interface VibeGraphProps {
   selectedNodes: string[];
   onToggleNode: (id: string) => void;
+  onClearSelections: () => void;
 }
 
 // Content coordinate space: 1600 × 900
 const CX = 800, CY = 450;
 type Pt = { x: number; y: number };
 type View = { x: number; y: number; scale: number };
+type DragTarget = { id: string; startClient: Pt; startPos: Pt; moved: boolean };
 
 const EDGES: [string, string][] = [
   ['genre', 'mood'], ['mood', 'tempo'],
@@ -22,8 +24,8 @@ const EDGES: [string, string][] = [
   ['energy', 'texture'], ['texture', 'genre'],
 ];
 
-const ROOT_RING = 258;
-const ROOT_R  = 64;
+const ROOT_RING = 268;
+const ROOT_R  = 82;
 const L1_R    = 37;
 const L2_R    = 30;
 const L1_DIST = 244;
@@ -108,10 +110,11 @@ interface NodeCircleProps {
   selected: boolean; hovered: boolean;
   label: string; fontSize: number;
   onClick: () => void; onHover: (v: boolean) => void;
+  onPointerDown: (e: React.PointerEvent<SVGGElement>) => void;
   delay?: number; kind?: 'l1' | 'l2'; floatSeed?: number;
 }
 
-function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, onHover, delay = 0, kind = 'l2', floatSeed = 0 }: NodeCircleProps) {
+function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, onHover, onPointerDown, delay = 0, kind = 'l2', floatSeed = 0 }: NodeCircleProps) {
   const fh = selected ? OH : hue;
   const fs = selected ? OS : kind === 'l1' ? 48 : 42;
   const fl = selected ? OL : hovered ? (kind === 'l1' ? 31 : 28) : (kind === 'l1' ? 24 : 21);
@@ -120,6 +123,7 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
   const lineGap = lines.length > 1 ? Math.max(10, fontSize * 0.95) : 0;
   const floatOffset = 4 + (floatSeed % 3);
   const floatDuration = 4.2 + (floatSeed % 5) * 0.45;
+  const baseOpacity = 1;
   const labelColor = selected
     ? 'rgba(255,255,255,0.99)'
     : hovered
@@ -136,8 +140,9 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
         opacity: { duration: 0.22, delay },
         y: { duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + floatSeed * 0.03 },
       }}
-      style={{ transformOrigin: `${pos.x}px ${pos.y}px`, cursor: 'pointer' }}
+      style={{ transformOrigin: `${pos.x}px ${pos.y}px`, cursor: 'pointer', opacity: baseOpacity }}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onPointerDown={onPointerDown}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
@@ -179,6 +184,13 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
         transform={`rotate(-18 ${pos.x} ${pos.y})`}
         style={{ pointerEvents: 'none' }}
       />
+      <circle
+        cx={pos.x + r * 0.16}
+        cy={pos.y + r * 0.18}
+        r={r * 0.72}
+        fill={hsl(fh, Math.max(18, fs - 10), Math.max(8, fl - 10), 0.18)}
+        style={{ pointerEvents: 'none' }}
+      />
       <circle cx={pos.x} cy={pos.y} r={r} fill="url(#sphere-gloss)" style={{ pointerEvents: 'none' }} />
       <text
         x={pos.x}
@@ -210,11 +222,14 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProps) {
+export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelections }: VibeGraphProps) {
   const [expandedRoots, setExpandedRoots] = useState<Set<string>>(new Set());
   const [expandedL1s,   setExpandedL1s  ] = useState<Set<string>>(new Set());
   const [hovered,       setHovered      ] = useState<string | null>(null);
   const [dragging,      setDragging     ] = useState(false);
+  const [nodePositions, setNodePositions] = useState<Record<string, Pt>>({});
+  const dragRef = useRef<DragTarget | null>(null);
+  const suppressClickRef = useRef<Set<string>>(new Set());
 
   // Infinite canvas
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +287,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
   }, []);
 
   const onBgMove = useCallback((e: React.PointerEvent<SVGRectElement>) => {
-    if (e.buttons !== 1) return;
+    if (e.buttons !== 1 || dragRef.current) return;
     setView(v => ({
       ...v,
       x: panOrigin.current.vx + e.clientX - panOrigin.current.mx,
@@ -281,6 +296,62 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
   }, []);
 
   const onBgUp = useCallback(() => setDragging(false), []);
+
+  const getSvgPoint = useCallback((clientX: number, clientY: number) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { x: clientX, y: clientY };
+    return {
+      x: (clientX - rect.left - viewRef.current.x) / viewRef.current.scale,
+      y: (clientY - rect.top - viewRef.current.y) / viewRef.current.scale,
+    };
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const active = dragRef.current;
+      if (!active) return;
+      const next = getSvgPoint(e.clientX, e.clientY);
+      const dx = next.x - active.startClient.x;
+      const dy = next.y - active.startClient.y;
+      if (!active.moved && Math.hypot(dx, dy) > 4 / viewRef.current.scale) {
+        active.moved = true;
+        suppressClickRef.current.add(active.id);
+      }
+      setNodePositions(prev => ({
+        ...prev,
+        [active.id]: {
+          x: active.startPos.x + dx,
+          y: active.startPos.y + dy,
+        },
+      }));
+    };
+
+    const onUp = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      setTimeout(() => {
+        suppressClickRef.current.clear();
+      }, 0);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [getSvgPoint]);
+
+  const startNodeDrag = useCallback((id: string, pos: Pt) => (e: React.PointerEvent<SVGGElement>) => {
+    e.stopPropagation();
+    const startClient = getSvgPoint(e.clientX, e.clientY);
+    dragRef.current = { id, startClient, startPos: pos, moved: false };
+  }, [getSvgPoint]);
+
+  const guardedClick = useCallback((id: string, handler: () => void) => {
+    if (suppressClickRef.current.has(id)) return;
+    handler();
+  }, []);
 
   function toggleRoot(id: string) {
     setExpandedRoots(prev => {
@@ -310,21 +381,91 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
     onToggleNode(node.id);
   }
 
-  const layout = useMemo(() => roots.map((root, ri) => {
-    const rp = polar(CX, CY, ROOT_RING, -Math.PI / 2 + (2 * Math.PI / roots.length) * ri);
-    const outAngle = outwardAngle(rp.x, rp.y);
-    const l1Pos = l1Positions(rp, outAngle, root.children.length);
-    const l1Nodes = root.children.map((l1, li) => {
-      const { angle: l1a, pos: l1p } = l1Pos[li];
-      const l2c = l1.children ?? [];
-      const l2Pos = l2Positions(l1a, l1p, l2c.length);
-      return {
-        node: l1, pos: l1p, angle: l1a,
-        l2: l2c.map((l2, l2i) => ({ node: l2, pos: l2Pos[l2i].pos, angle: l2Pos[l2i].angle })),
-      };
+  const layout = useMemo(() => {
+    // Step 1: compute raw positions
+    const rawLayout = roots.map((root, ri) => {
+      const rootBase = polar(CX, CY, ROOT_RING, -Math.PI / 2 + (2 * Math.PI / roots.length) * ri);
+      const rp = nodePositions[root.id] ?? rootBase;
+      const outAngle = outwardAngle(rp.x, rp.y);
+      const l1Pos = l1Positions(rp, outAngle, root.children.length);
+      const l1Nodes = root.children.map((l1, li) => {
+        const { angle: l1a, pos: l1Base } = l1Pos[li];
+        const l1p = nodePositions[l1.id] ?? l1Base;
+        const l2c = l1.children ?? [];
+        const l2Pos = l2Positions(l1a, l1p, l2c.length);
+        return {
+          node: l1, pos: l1p, angle: l1a,
+          l2: l2c.map((l2, l2i) => ({
+            node: l2,
+            pos: nodePositions[l2.id] ?? l2Pos[l2i].pos,
+            angle: l2Pos[l2i].angle,
+          })),
+        };
+      });
+      return { root, rootPos: rp, outAngle, l1Nodes };
     });
-    return { root, rootPos: rp, outAngle, l1Nodes };
-  }), []);
+
+    // Step 2: gather visible nodes for repulsion
+    type RepNode = { id: string; x: number; y: number; r: number; fixed: boolean };
+    const repNodes: RepNode[] = [];
+
+    rawLayout.forEach(({ root, rootPos: rp, l1Nodes }) => {
+      // Root nodes are always fixed — anchor the ring
+      repNodes.push({ id: root.id, x: rp.x, y: rp.y, r: ROOT_R, fixed: true });
+      if (expandedRoots.has(root.id)) {
+        l1Nodes.forEach(({ node: l1, pos: l1p, l2 }) => {
+          repNodes.push({ id: l1.id, x: l1p.x, y: l1p.y, r: L1_R, fixed: !!nodePositions[l1.id] });
+          if (expandedL1s.has(l1.id)) {
+            l2.forEach(({ node: l2n, pos: l2p }) => {
+              repNodes.push({ id: l2n.id, x: l2p.x, y: l2p.y, r: L2_R, fixed: !!nodePositions[l2n.id] });
+            });
+          }
+        });
+      }
+    });
+
+    // Step 3: iterative repulsion — push overlapping nodes apart
+    const PAD = 12;
+    const ITERS = 40;
+    const adj: Record<string, { x: number; y: number }> = {};
+    repNodes.forEach(n => { adj[n.id] = { x: n.x, y: n.y }; });
+
+    for (let iter = 0; iter < ITERS; iter++) {
+      for (let i = 0; i < repNodes.length; i++) {
+        for (let j = i + 1; j < repNodes.length; j++) {
+          const a = repNodes[i];
+          const b = repNodes[j];
+          const pa = adj[a.id];
+          const pb = adj[b.id];
+          const dx = pb.x - pa.x;
+          const dy = pb.y - pa.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          const minDist = a.r + b.r + PAD;
+          if (dist < minDist) {
+            const push = (minDist - dist) * 0.5;
+            const nx = (dx / dist) * push;
+            const ny = (dy / dist) * push;
+            if (!a.fixed) { adj[a.id] = { x: pa.x - nx, y: pa.y - ny }; }
+            if (!b.fixed) { adj[b.id] = { x: pb.x + nx, y: pb.y + ny }; }
+          }
+        }
+      }
+    }
+
+    // Step 4: return layout with repulsion-adjusted positions
+    return rawLayout.map(item => ({
+      ...item,
+      rootPos: adj[item.root.id] ?? item.rootPos,
+      l1Nodes: item.l1Nodes.map(l1item => ({
+        ...l1item,
+        pos: adj[l1item.node.id] ?? l1item.pos,
+        l2: l1item.l2.map(l2item => ({
+          ...l2item,
+          pos: adj[l2item.node.id] ?? l2item.pos,
+        })),
+      })),
+    }));
+  }, [nodePositions, expandedRoots, expandedL1s]);
 
   const rootPosMap = useMemo(() => {
     const m: Record<string, Pt> = {};
@@ -389,21 +530,6 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
             <circle cx={CX} cy={CY} r={380} fill="url(#center-glow)" />
           )}
 
-          {/* Skeleton edges along the outer ring */}
-          {EDGES.map(([a, b]) => {
-            const pa = rootPosMap[a], pb = rootPosMap[b];
-            if (!pa || !pb) return null;
-            const lit = expandedRoots.has(a) || expandedRoots.has(b);
-            return (
-              <path key={`e-${a}-${b}`}
-                d={perimeterArcPath(pa, pb, ROOT_RING)}
-                fill="none"
-                stroke="rgba(160,192,255,1)"
-                strokeWidth={0.7}
-                strokeOpacity={lit ? 0.16 : 0.06}
-                style={{ transition: 'stroke-opacity 0.4s' }} />
-            );
-          })}
 
           {/* Root → L1 lines */}
           {layout.map(({ root, rootPos: rp, l1Nodes }) =>
@@ -411,7 +537,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
               <motion.line key={`rl1-${l1.id}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 x1={rp.x} y1={rp.y} x2={l1p.x} y2={l1p.y}
-                stroke={hsl(root.hue, 52, 58, selectedNodes.includes(l1.id) ? 0.68 : 0.22)}
+                stroke={hsl(root.hue, 52, 58, 0.22)}
                 strokeWidth={0.9} />
             ))
           )}
@@ -423,7 +549,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                 <motion.line key={`l1l2-${l2n.id}`}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   x1={l1p.x} y1={l1p.y} x2={l2p.x} y2={l2p.y}
-                  stroke={hsl(root.hue, 46, 56, selectedNodes.includes(l2n.id) ? 0.58 : 0.16)}
+                  stroke={hsl(root.hue, 46, 56, 0.16)}
                   strokeWidth={0.55} />
               ))
             )
@@ -467,7 +593,8 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                 <motion.g
                   style={{ transformOrigin: `${rp.x}px ${rp.y}px`, cursor: 'pointer' }}
                   whileHover={{ scale: 1.08 }}
-                  onClick={() => toggleRoot(root.id)}
+                  onClick={() => guardedClick(root.id, () => toggleRoot(root.id))}
+                  onPointerDown={startNodeDrag(root.id, rp)}
                   onMouseEnter={() => setHovered(root.id)}
                   onMouseLeave={() => setHovered(null)}
                 >
@@ -495,27 +622,16 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                       filter: isExp
                         ? `drop-shadow(0 0 24px ${hsl(H, 72, 58, 0.64)}) drop-shadow(0 18px 28px rgba(0,0,0,0.28))`
                         : `drop-shadow(0 0 10px ${hsl(H, 50, 40, 0.22)}) drop-shadow(0 16px 22px rgba(0,0,0,0.22))`,
-                      transition: 'all 0.3s',
+                      transition: 'fill 0.3s, stroke 0.3s, filter 0.3s',
                     }}
                   />
-                  <ellipse
-                    cx={rp.x}
-                    cy={rp.y + ROOT_R * 0.04}
-                    rx={ROOT_R * 1.16}
-                    ry={ROOT_R * 0.38}
-                    fill="none"
-                    stroke={hsl(H, 50, 72, 0.2)}
-                    strokeWidth={1}
-                    transform={`rotate(-18 ${rp.x} ${rp.y})`}
-                    style={{ pointerEvents: 'none' }}
-                  />
                   <circle cx={rp.x} cy={rp.y} r={ROOT_R} fill="url(#root-sphere-gloss)" style={{ pointerEvents: 'none' }} />
-                  <text x={rp.x} y={rp.y - 6} textAnchor="middle" dominantBaseline="central"
-                    fontSize={25} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                  <text x={rp.x} y={rp.y - 8} textAnchor="middle" dominantBaseline="central"
+                    fontSize={30} style={{ pointerEvents: 'none', userSelect: 'none' }}>
                     {root.icon}
                   </text>
-                  <text x={rp.x} y={rp.y + 24} textAnchor="middle" dominantBaseline="central"
-                    fontSize={13.5} fontFamily="'Inter', sans-serif"
+                  <text x={rp.x} y={rp.y + 28} textAnchor="middle" dominantBaseline="central"
+                    fontSize={16} fontFamily="'Inter', sans-serif"
                     fontWeight={isExp ? 700 : 600}
                     fill={dimmed ? 'rgba(255,255,255,0.52)' : 'rgba(255,255,255,0.96)'}
                     style={{ pointerEvents: 'none', userSelect: 'none', transition: 'fill 0.3s' }}>
@@ -525,7 +641,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
 
                 {/* L1 children */}
                 <AnimatePresence>
-                  {isExp && l1Nodes.map(({ node: l1, pos: l1p, angle: l1a, l2 }, li) => (
+                  {isExp && l1Nodes.map(({ node: l1, pos: l1p, l2 }, li) => (
                     <g key={l1.id}>
                       <NodeCircle
                         pos={l1p} r={L1_R} hue={H}
@@ -534,19 +650,21 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
                         delay={li * 0.038}
                         kind="l1"
                         floatSeed={li + 1}
-                        onClick={() => toggleL1(l1)}
+                        onClick={() => guardedClick(l1.id, () => toggleL1(l1))}
                         onHover={(v) => setHovered(v ? l1.id : null)}
+                        onPointerDown={startNodeDrag(l1.id, l1p)}
                       />
                       <AnimatePresence>
-                        {expandedL1s.has(l1.id) && l2.map(({ node: l2n, pos: l2p, angle: l2a }, l2i) => (
+                        {expandedL1s.has(l1.id) && l2.map(({ node: l2n, pos: l2p }, l2i) => (
                           <NodeCircle key={l2n.id}
                             pos={l2p} r={L2_R} hue={H}
                             selected={selectedNodes.includes(l2n.id)} hovered={hovered === l2n.id}
                             label={l2n.label} fontSize={11.5}
                             delay={l2i * 0.032}
                             floatSeed={l2i + li * 7 + 3}
-                            onClick={() => onToggleNode(l2n.id)}
+                            onClick={() => guardedClick(l2n.id, () => onToggleNode(l2n.id))}
                             onHover={(v) => setHovered(v ? l2n.id : null)}
+                            onPointerDown={startNodeDrag(l2n.id, l2p)}
                             kind="l2"
                           />
                         ))}
@@ -588,6 +706,21 @@ export default function VibeGraph({ selectedNodes, onToggleNode }: VibeGraphProp
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
           className="w-7 h-7 rounded-md text-xs flex items-center justify-center hover:bg-white/10 transition-colors">
           ⊡
+        </button>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '2px 0' }} />
+        <button
+          onClick={() => setNodePositions({})}
+          title="Reset positions"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
+          className="w-7 h-7 rounded-md text-xs flex items-center justify-center hover:bg-white/10 transition-colors">
+          ↺
+        </button>
+        <button
+          onClick={onClearSelections}
+          title="Clear selections"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
+          className="w-7 h-7 rounded-md text-xs flex items-center justify-center hover:bg-white/10 transition-colors">
+          ✕
         </button>
       </div>
     </div>

@@ -26,9 +26,11 @@ export default function AnimatedBackground({ isPlaying = false }: { isPlaying?: 
   const timeRef = useRef(0);
 
   const particles = useMemo<Particle[]>(() => {
+    const pw = window.innerWidth  * window.devicePixelRatio;
+    const ph = window.innerHeight * window.devicePixelRatio;
     return Array.from({ length: 160 }, () => ({
-      x: Math.random() * 2000,
-      y: Math.random() * 2000,
+      x: Math.random() * pw,
+      y: Math.random() * ph,
       vx: (Math.random() - 0.5) * 0.12,
       vy: (Math.random() - 0.5) * 0.08,
       size: Math.random() * 2.2 + 0.35,
