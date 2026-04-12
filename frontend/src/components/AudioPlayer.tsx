@@ -112,8 +112,8 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
               className="flex-1 rounded-t-sm transition-colors duration-150"
               style={{
                 height: `${h * 100}%`,
-                backgroundColor: isPast ? '#6366f1' : 'rgba(255,255,255,0.08)',
-                boxShadow: isPast ? '0 0 4px rgba(99,102,241,0.4)' : 'none',
+                backgroundColor: isPast ? '#f97316' : 'rgba(255,255,255,0.08)',
+                boxShadow: isPast ? '0 0 6px rgba(249,115,22,0.5)' : 'none',
                 opacity: isPast ? 1 : 0.7,
               }}
             />
@@ -141,9 +141,15 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
             onClick={togglePlay}
             className="w-12 h-12 rounded-full text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95"
             style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+              background: isPlaying
+                ? 'linear-gradient(135deg, rgba(249,115,22,0.22), rgba(255,255,255,0.08))'
+                : 'rgba(255,255,255,0.08)',
+              border: isPlaying
+                ? '1px solid rgba(249,115,22,0.55)'
+                : '1px solid rgba(255,255,255,0.18)',
+              boxShadow: isPlaying
+                ? '0 0 24px rgba(249,115,22,0.4), inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
             }}
@@ -179,8 +185,8 @@ export default function AudioPlayer({ vibeSummary, blueprintCount, trackKey, tra
           className="h-full rounded-full transition-all duration-100 relative"
           style={{
             width: `${progress}%`,
-            background: 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)',
-            boxShadow: '0 0 8px rgba(99,102,241,0.5)',
+            background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)',
+            boxShadow: '0 0 8px rgba(249,115,22,0.5)',
           }}
         >
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />

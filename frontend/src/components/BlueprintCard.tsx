@@ -31,10 +31,10 @@ export default function BlueprintCard({ blueprint: bp, rank, selected, onToggle,
         isSelectable ? 'cursor-pointer hover:brightness-110' : ''
       }`}
       style={{
-        background: selected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.04)',
-        border: selected ? '1px solid rgba(99,102,241,0.45)' : '1px solid rgba(255,255,255,0.1)',
+        background: selected ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)',
+        border: selected ? '1px solid rgba(249,115,22,0.4)' : '1px solid rgba(255,255,255,0.1)',
         boxShadow: selected
-          ? 'inset 0 1px 0 rgba(165,168,255,0.12), 0 0 16px rgba(99,102,241,0.15)'
+          ? 'inset 0 1px 0 rgba(253,186,116,0.15), 0 0 20px rgba(249,115,22,0.12)'
           : 'inset 0 1px 0 rgba(255,255,255,0.07)',
       }}
     >
@@ -68,8 +68,8 @@ export default function BlueprintCard({ blueprint: bp, rank, selected, onToggle,
               <div
                 className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: selected ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.08)',
-                  border: selected ? '1px solid rgba(99,102,241,0.9)' : '1px solid rgba(255,255,255,0.2)',
+                  background: selected ? 'rgba(249,115,22,0.85)' : 'rgba(255,255,255,0.08)',
+                  border: selected ? '1px solid rgba(249,115,22,0.95)' : '1px solid rgba(255,255,255,0.2)',
                 }}
               >
                 {selected && <Check size={9} color="white" strokeWidth={3} />}
@@ -98,25 +98,55 @@ export default function BlueprintCard({ blueprint: bp, rank, selected, onToggle,
           )}
         </div>
 
-        {/* Metrics */}
+        {/* Metrics — LED dot readouts */}
         <div className="flex items-center gap-3 mt-1">
-          <div className="flex flex-col">
-            <span className="text-[16px] font-bold leading-none" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'rgba(255,255,255,0.9)' }}>
-              {Math.round(bp.bpm)}
-            </span>
-            <span className="text-[8px] uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.35)' }}>BPM</span>
+          {/* BPM */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{
+                background: selected ? '#f97316' : 'rgba(255,255,255,0.18)',
+                boxShadow: selected ? '0 0 4px rgba(249,115,22,0.7)' : 'none',
+              }}
+            />
+            <div className="flex flex-col">
+              <span className="text-[15px] font-semibold leading-none" style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.92)', letterSpacing: '-0.03em' }}>
+                {Math.round(bp.bpm)}
+              </span>
+              <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.3)' }}>BPM</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[13px] font-semibold leading-none" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'rgba(255,255,255,0.85)' }}>
-              {bp.key}{bp.mode === 'minor' ? 'm' : ''}
-            </span>
-            <span className="text-[8px] uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.35)' }}>Key</span>
+          {/* Key */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{
+                background: selected ? '#f97316' : 'rgba(255,255,255,0.18)',
+                boxShadow: selected ? '0 0 4px rgba(249,115,22,0.7)' : 'none',
+              }}
+            />
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold leading-none" style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.85)', letterSpacing: '-0.02em' }}>
+                {bp.key}{bp.mode === 'minor' ? 'm' : ''}
+              </span>
+              <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.3)' }}>Key</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[13px] font-semibold leading-none" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'rgba(255,255,255,0.85)' }}>
-              {Math.round(bp.energy * 100)}
-            </span>
-            <span className="text-[8px] uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.35)' }}>Energy</span>
+          {/* Energy */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{
+                background: selected ? '#f97316' : 'rgba(255,255,255,0.18)',
+                boxShadow: selected ? '0 0 4px rgba(249,115,22,0.7)' : 'none',
+              }}
+            />
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold leading-none" style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(255,255,255,0.85)', letterSpacing: '-0.02em' }}>
+                {Math.round(bp.energy * 100)}
+              </span>
+              <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.3)' }}>Energy</span>
+            </div>
           </div>
         </div>
 
