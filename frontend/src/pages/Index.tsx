@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Zap, Sparkles } from 'lucide-react';
+import { useState, useCallback, useRef, KeyboardEvent } from 'react';
+import { Zap, Sparkles, Plus, X } from 'lucide-react';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
 import InputPanels from '@/components/InputPanels';
@@ -32,6 +32,9 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
 const Index = () => {
   const [mode, setMode] = useState<AppMode>('graph');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [extraVibes, setExtraVibes] = useState<string[]>([]);
+  const [vibeInput, setVibeInput] = useState('');
+  const vibeInputRef = useRef<HTMLInputElement>(null);
   const [freeText, setFreeText] = useState('');
   const [lyrics, setLyrics] = useState('');
 
@@ -68,8 +71,12 @@ const Index = () => {
     setGenerationResult(null);
 
     try {
+      const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
       const query = mode === 'graph'
-        ? compileQuery(selectedNodes)
+        ? {
+            ...baseQuery!,
+            free_text: [baseQuery!.free_text, ...extraVibes].filter(Boolean).join(' '),
+          }
         : {
             vibes: [],
             free_text: mode === 'text' ? freeText : lyrics,
@@ -87,7 +94,7 @@ const Index = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [mode, selectedNodes, freeText, lyrics]);
+  }, [mode, selectedNodes, freeText, lyrics, extraVibes]);
 
   const handleGenerate = useCallback(async () => {
     if (!searchResults) return;
@@ -126,6 +133,8 @@ const Index = () => {
     setGenerationResult(null);
     setSelectedBlueprintIds(new Set());
     setError(null);
+    setExtraVibes([]);
+    setVibeInput('');
   }, []);
 
   const meta = MODE_META[mode];
@@ -315,17 +324,91 @@ const Index = () => {
                 )}
 
                 {mode === 'graph' && (
-                  <VibePanel
-                    selectedNodes={selectedNodes}
-                    onRemoveNode={toggleNode}
-                    onGenerate={handleSearch}
-                    isGenerating={isSearching}
-                    title="Selected Vibes"
-                    buttonLabel="Find Blueprints"
-                    emptyMessage="Pick nodes from the graph to define genre, mood, texture, and energy."
-                    minSelections={1}
-                    className="mt-6 flex-1 border-white/0 bg-transparent p-0 shadow-none"
-                  />
+                  <div className="mt-6 flex flex-col flex-1 gap-4">
+                    <VibePanel
+                      selectedNodes={selectedNodes}
+                      onRemoveNode={toggleNode}
+                      onGenerate={handleSearch}
+                      isGenerating={isSearching}
+                      title="Selected Vibes"
+                      buttonLabel="Find Blueprints"
+                      emptyMessage="Pick nodes from the graph to define genre, mood, texture, and energy."
+                      minSelections={1}
+                      className="border-white/0 bg-transparent p-0 shadow-none"
+                    />
+
+                    {/* Extra vibes tag input */}
+                    <div>
+                      <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-2">Add More Tags</p>
+                      {extraVibes.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {extraVibes.map((v, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{
+                                background: 'rgba(251,191,36,0.12)',
+                                border: '1px solid rgba(251,191,36,0.28)',
+                                color: 'rgba(253,186,116,0.9)',
+                              }}
+                            >
+                              {v}
+                              <button
+                                onClick={() => setExtraVibes(prev => prev.filter((_, j) => j !== i))}
+                                className="opacity-60 hover:opacity-100 transition-opacity"
+                              >
+                                <X size={10} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          ref={vibeInputRef}
+                          type="text"
+                          value={vibeInput}
+                          onChange={e => setVibeInput(e.target.value)}
+                          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                            if ((e.key === 'Enter' || e.key === ',') && vibeInput.trim()) {
+                              e.preventDefault();
+                              const tag = vibeInput.trim().replace(/,$/, '');
+                              if (tag && !extraVibes.includes(tag)) {
+                                setExtraVibes(prev => [...prev, tag]);
+                              }
+                              setVibeInput('');
+                            }
+                          }}
+                          placeholder="cinematic, dark, orchestral…"
+                          className="flex-1 min-w-0 px-3 py-2 rounded-xl text-xs text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-orange-500/40"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.09)',
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const tag = vibeInput.trim().replace(/,$/, '');
+                            if (tag && !extraVibes.includes(tag)) {
+                              setExtraVibes(prev => [...prev, tag]);
+                            }
+                            setVibeInput('');
+                            vibeInputRef.current?.focus();
+                          }}
+                          disabled={!vibeInput.trim()}
+                          className="flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 transition-all disabled:opacity-30"
+                          style={{
+                            background: 'rgba(251,191,36,0.14)',
+                            border: '1px solid rgba(251,191,36,0.25)',
+                            color: 'rgba(253,186,116,0.85)',
+                          }}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[9px] text-white/25">Press Enter or , to add a tag</p>
+                    </div>
+                  </div>
                 )}
 
                 {mode !== 'graph' && (
