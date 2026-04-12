@@ -8,7 +8,7 @@ import VibePanel from '@/components/VibePanel';
 import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
 import { generateTrack, searchBlueprints, GenerateResponse, SearchResponse, Blueprint } from '@/lib/api';
-import { compileQuery } from '@/data/graphNodes';
+import { compileQuery, getNodeLabel } from '@/data/graphNodes';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
   graph: {
@@ -44,6 +44,8 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [generationMode, setGenerationMode] = useState<'simple' | 'advanced'>('simple');
+  const [musicLengthMs, setMusicLengthMs] = useState(90000);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -95,6 +97,10 @@ const Index = () => {
     setIsGenerating(true);
     setError(null);
 
+    const user_input = mode === 'graph'
+      ? selectedNodes.map(getNodeLabel).join(', ')
+      : mode === 'text' ? freeText : lyrics;
+
     try {
       const result = await generateTrack({
         vibes: [],
@@ -103,7 +109,9 @@ const Index = () => {
         bpm_lower: null,
         bpm_upper: null,
         lyrics: mode === 'lyrics' ? lyrics : '',
-        mode: mode === 'lyrics' ? 'composition_plan' : 'prompt',
+        user_input,
+        generation_mode: generationMode,
+        music_length_ms: musicLengthMs,
       });
       setGenerationResult(result);
     } catch (err) {
@@ -111,7 +119,7 @@ const Index = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [searchResults, selectedBlueprintIds, mode, lyrics]);
+  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs]);
 
   const handleReset = useCallback(() => {
     setSearchResults(null);
@@ -205,7 +213,62 @@ const Index = () => {
                   ))}
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-3">
+                  {/* Generation mode toggle */}
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Mode</p>
+                    <div className="flex gap-1.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      {(['simple', 'advanced'] as const).map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setGenerationMode(m)}
+                          className="flex-1 rounded-lg py-1.5 text-[11px] font-semibold capitalize transition-all"
+                          style={generationMode === m ? {
+                            background: 'linear-gradient(135deg,rgba(251,191,36,0.18),rgba(249,115,22,0.18))',
+                            border: '1px solid rgba(249,115,22,0.35)',
+                            color: 'rgba(253,186,116,0.95)',
+                          } : {
+                            border: '1px solid transparent',
+                            color: 'rgba(255,255,255,0.38)',
+                          }}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Length selector */}
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Length</p>
+                    <div className="flex gap-1.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      {([
+                        { label: '30s', ms: 30000 },
+                        { label: '60s', ms: 60000 },
+                        { label: '90s', ms: 90000 },
+                        { label: '2m',  ms: 120000 },
+                      ] as const).map(({ label, ms }) => (
+                        <button
+                          key={ms}
+                          onClick={() => setMusicLengthMs(ms)}
+                          className="flex-1 rounded-lg py-1.5 text-[11px] font-semibold transition-all"
+                          style={musicLengthMs === ms ? {
+                            background: 'linear-gradient(135deg,rgba(251,191,36,0.18),rgba(249,115,22,0.18))',
+                            border: '1px solid rgba(249,115,22,0.35)',
+                            color: 'rgba(253,186,116,0.95)',
+                          } : {
+                            border: '1px solid transparent',
+                            color: 'rgba(255,255,255,0.38)',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2">
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || selectedBlueprints.length === 0}

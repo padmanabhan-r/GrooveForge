@@ -16,6 +16,10 @@ export interface Blueprint {
   acousticness: number;
   valence: number;
   danceability: number;
+  instrumentalness: number;
+  liveness: number;
+  speechiness: number;
+  loudness: number;
   vocal_type: string;
   mood: string;
   themes: string;
@@ -57,7 +61,9 @@ export interface GenerateRequest {
   bpm_lower: number | null;
   bpm_upper: number | null;
   lyrics: string;
-  mode: 'prompt' | 'composition_plan';
+  user_input: string;
+  generation_mode: 'simple' | 'advanced';
+  music_length_ms: number;
 }
 
 export interface GenerateResponse {

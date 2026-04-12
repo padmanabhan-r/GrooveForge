@@ -5,14 +5,14 @@ from fastapi import APIRouter, HTTPException
 from app.generation import generate_from_composition_plan, generate_from_prompt
 from app.models import GenerateRequest, GenerateResponse, SearchRequest
 from app.retrieval import aggregate_blueprints, search_blueprints
-from app.synthesis import build_composition_plan, build_prompt, enrich_prompt
+from app.synthesis import synthesize_advanced, synthesize_simple
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 async def _resolve_blueprints(request: GenerateRequest):
-    """Return (blueprints, aggregated) — retrieve if needed, else use provided."""
+    """Return (blueprints, aggregated) — use provided blueprints or retrieve fresh."""
     if request.blueprints:
         blueprints = request.blueprints
         return blueprints, aggregate_blueprints(blueprints)
@@ -33,15 +33,28 @@ async def _resolve_blueprints(request: GenerateRequest):
 async def generate(request: GenerateRequest) -> GenerateResponse:
     blueprints, aggregated = await _resolve_blueprints(request)
 
-    if request.mode == "composition_plan":
-        plan = build_composition_plan(aggregated, request.lyrics or "")
+    if request.generation_mode == "advanced":
+        plan = await synthesize_advanced(
+            user_input=request.user_input,
+            blueprints=blueprints,
+            music_length_ms=request.music_length_ms,
+            lyrics=request.lyrics or "",
+        )
         audio_url, prompt_used = await generate_from_composition_plan(plan, aggregated)
     else:
-        base_prompt = build_prompt(aggregated)
-        final_prompt = await enrich_prompt(base_prompt, aggregated)
-        audio_url, prompt_used = await generate_from_prompt(final_prompt)
+        prompt, _ = await synthesize_simple(
+            user_input=request.user_input,
+            blueprints=blueprints,
+            music_length_ms=request.music_length_ms,
+        )
+        audio_url, prompt_used = await generate_from_prompt(prompt, request.music_length_ms)
 
-    logger.info("Generated track: %s (mode=%s)", audio_url, request.mode)
+    logger.info(
+        "Generated track: %s (generation_mode=%s, length_ms=%d)",
+        audio_url,
+        request.generation_mode,
+        request.music_length_ms,
+    )
     return GenerateResponse(
         audio_url=audio_url,
         prompt_used=prompt_used,

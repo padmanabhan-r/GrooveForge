@@ -40,9 +40,9 @@ def _get_client() -> ElevenLabs:
     return ElevenLabs(api_key=settings.elevenlabs_api_key)
 
 
-def _sync_compose_prompt(prompt: str) -> bytes:
+def _sync_compose_prompt(prompt: str, music_length_ms: int = 90000) -> bytes:
     client = _get_client()
-    chunks = client.music.compose(prompt=prompt, music_length_ms=90000)
+    chunks = client.music.compose(prompt=prompt, music_length_ms=music_length_ms)
     return b"".join(chunks)
 
 
@@ -52,13 +52,18 @@ def _sync_compose_plan(plan_camel: dict) -> bytes:
     return b"".join(chunks)
 
 
-async def generate_from_prompt(prompt: str) -> tuple[str, str]:
+async def generate_from_prompt(
+    prompt: str,
+    music_length_ms: int = 90000,
+) -> tuple[str, str]:
     """Generate audio from a text prompt. Returns (audio_url, prompt_used)."""
     audio_id = uuid.uuid4().hex
     output_path = AUDIO_DIR / f"{audio_id}.mp3"
 
     loop = asyncio.get_event_loop()
-    audio_bytes = await loop.run_in_executor(None, _sync_compose_prompt, prompt)
+    audio_bytes = await loop.run_in_executor(
+        None, _sync_compose_prompt, prompt, music_length_ms
+    )
     output_path.write_bytes(audio_bytes)
 
     audio_url = f"/static/audio/{audio_id}.mp3"

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +17,10 @@ class Blueprint(BaseModel):
     acousticness: float = Field(default=0.0, ge=0.0, le=1.0)
     valence: float = Field(default=0.5, ge=0.0, le=1.0)
     danceability: float = Field(default=0.5, ge=0.0, le=1.0)
+    instrumentalness: float = Field(default=0.0, ge=0.0, le=1.0)
+    liveness: float = Field(default=0.0, ge=0.0, le=1.0)
+    speechiness: float = Field(default=0.0, ge=0.0, le=1.0)
+    loudness: float = 0.0      # dB, typically -60 to 0
     vocal_type: str = ""
     mood: str = ""
     themes: str = ""           # lp_msd only — space-joined theme tokens
@@ -56,7 +62,9 @@ class GenerateRequest(BaseModel):
     bpm_lower: float | None = None
     bpm_upper: float | None = None
     lyrics: str = ""
-    mode: str = Field(default="prompt", pattern="^(prompt|composition_plan)$")
+    user_input: str = ""
+    generation_mode: Literal["simple", "advanced"] = "simple"
+    music_length_ms: int = 90000
 
 
 class GenerateResponse(BaseModel):
