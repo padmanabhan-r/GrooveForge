@@ -4,7 +4,6 @@ import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
 import InputPanels from '@/components/InputPanels';
 import AnimatedBackground from '@/components/AnimatedBackground';
-import VibePanel from '@/components/VibePanel';
 import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
 import { generateTrack, searchBlueprints, GenerateResponse, SearchResponse, Blueprint } from '@/lib/api';
@@ -324,43 +323,60 @@ const Index = () => {
                 )}
 
                 {mode === 'graph' && (
-                  <div className="mt-6 flex flex-col flex-1 gap-4">
-                    <VibePanel
-                      selectedNodes={selectedNodes}
-                      onRemoveNode={toggleNode}
-                      onGenerate={handleSearch}
-                      isGenerating={isSearching}
-                      hideButton
-                      title="Selected Vibes"
-                      emptyMessage="Pick nodes from the graph to define genre, mood, texture, and energy."
-                      minSelections={1}
-                      className="border-white/0 bg-transparent p-0 shadow-none"
+                  <div className="mt-6 flex flex-col flex-1 gap-3">
+                    {/* Unified vibes container: node chips + extra tags + input */}
+                    <div
+                      className="rounded-2xl p-4"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
                     >
-                      {/* Extra vibes — inline with node chips, separated by a subtle divider */}
-                      <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                        {extraVibes.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {extraVibes.map((v, i) => (
-                              <span
-                                key={i}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] uppercase tracking-[0.22em] text-white/38">Selected Vibes</span>
+                        <span className="text-[10px] font-mono text-white/30">{selectedNodes.length + extraVibes.length}</span>
+                      </div>
+
+                      {/* All chips: graph nodes + extra tags */}
+                      {(selectedNodes.length > 0 || extraVibes.length > 0) ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedNodes.map(id => {
+                            const label = getNodeLabel(id);
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => toggleNode(id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:scale-105"
                                 style={{
-                                  background: 'rgba(251,191,36,0.12)',
-                                  border: '1px solid rgba(251,191,36,0.28)',
-                                  color: 'rgba(253,186,116,0.9)',
+                                  background: 'rgba(99,102,241,0.15)',
+                                  border: '1px solid rgba(99,102,241,0.3)',
+                                  color: 'rgba(165,180,252,0.9)',
                                 }}
                               >
-                                {v}
-                                <button
-                                  onClick={() => setExtraVibes(prev => prev.filter((_, j) => j !== i))}
-                                  className="opacity-60 hover:opacity-100 transition-opacity"
-                                >
-                                  <X size={10} />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                                {label}
+                                <X size={10} className="opacity-60" />
+                              </button>
+                            );
+                          })}
+                          {extraVibes.map((v, i) => (
+                            <button
+                              key={`extra-${i}`}
+                              onClick={() => setExtraVibes(prev => prev.filter((_, j) => j !== i))}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all hover:scale-105"
+                              style={{
+                                background: 'rgba(251,191,36,0.12)',
+                                border: '1px solid rgba(251,191,36,0.28)',
+                                color: 'rgba(253,186,116,0.9)',
+                              }}
+                            >
+                              {v}
+                              <X size={10} className="opacity-60" />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-white/28 leading-5">Pick nodes from the graph to define genre, mood, texture, and energy.</p>
+                      )}
+
+                      {/* Add more tags input — always visible inside the same box */}
+                      <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <div className="flex gap-2">
                           <input
                             ref={vibeInputRef}
@@ -406,12 +422,12 @@ const Index = () => {
                         </div>
                         <p className="mt-1.5 text-[9px] text-white/25">Enter or , to add · click chip to remove</p>
                       </div>
-                    </VibePanel>
+                    </div>
 
-                    {/* Find Blueprints button — below the whole vibes block */}
+                    {/* Find Blueprints button — below the unified vibes block */}
                     <button
                       onClick={handleSearch}
-                      disabled={isSearching || selectedNodes.length === 0}
+                      disabled={isSearching || (selectedNodes.length === 0 && extraVibes.length === 0)}
                       className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
                         background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
