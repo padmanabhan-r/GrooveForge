@@ -446,8 +446,11 @@ const Index = () => {
                     disabled={isGenerating || isPreviewing || selectedBlueprints.length === 0}
                     className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-                      boxShadow: '0 0 24px rgba(249,115,22,0.35)',
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
                     }}
                   >
                     <Sparkles size={15} />
@@ -594,8 +597,11 @@ const Index = () => {
                       disabled={isSearching || (selectedNodes.length === 0 && extraVibes.length === 0)}
                       className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
-                        background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-                        boxShadow: '0 0 24px rgba(249,115,22,0.35)',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
                       }}
                     >
                       <Sparkles size={15} />
@@ -629,27 +635,31 @@ const Index = () => {
 
       {/* Floating title */}
       <div className="absolute top-4 left-5 z-20 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
-            background: 'linear-gradient(145deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-            boxShadow: '0 0 20px rgba(251,191,36,0.45), 0 0 8px rgba(249,115,22,0.55), 0 3px 8px rgba(0,0,0,0.45)',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
           }}>
-          <Zap size={18} fill="white" color="white" strokeWidth={0} />
+          <Zap size={16} fill="white" color="white" strokeWidth={0} />
         </div>
-        <div>
-          <p className="text-[16px] font-black leading-tight"
-            style={{
-              letterSpacing: '-0.04em',
-              background: 'linear-gradient(135deg, #ffffff 0%, #fde68a 42%, #f97316 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}>
+        <div
+          className="px-4 py-2.5 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+        >
+          <p
+            className="text-[15px] font-bold leading-none tracking-wide"
+            style={{ color: 'rgba(255,255,255,0.92)' }}
+          >
             GrooveForge
-          </p>
-          <p className="text-[8px] uppercase tracking-[0.22em] font-semibold"
-            style={{ color: 'rgba(249,115,22,0.6)' }}>
-            Search by vibe · Generate by blueprint
           </p>
         </div>
       </div>

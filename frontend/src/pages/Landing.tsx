@@ -96,8 +96,11 @@ export default function Landing() {
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'linear-gradient(145deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-              boxShadow: '0 0 40px rgba(251,191,36,0.45), 0 0 16px rgba(249,115,22,0.55), 0 6px 18px rgba(0,0,0,0.55)',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
             }}
           >
             <Zap size={28} fill="white" color="white" strokeWidth={0} />
@@ -115,10 +118,8 @@ export default function Landing() {
             paddingBottom: '0.12em',
             fontSize: 'clamp(40px, 7.5vw, 76px)',
             letterSpacing: '-0.04em',
-            background: 'linear-gradient(135deg, #ffffff 0%, #fde68a 38%, #f97316 72%, #ea580c 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            color: '#ffffff',
+            textShadow: '0 0 40px rgba(255,255,255,0.25), 0 2px 12px rgba(0,0,0,0.4)',
           }}
         >
           GrooveForge
@@ -141,7 +142,7 @@ export default function Landing() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.7 }}
           className="mb-10 text-sm uppercase tracking-[0.26em] font-semibold"
-          style={{ color: 'rgba(249,115,22,0.55)' }}
+          style={{ color: 'rgba(255,255,255,0.55)' }}
         >
           Search by vibe · Generate by blueprint
         </motion.p>
@@ -168,8 +169,11 @@ export default function Landing() {
           onClick={() => navigate('/app')}
           className="relative px-12 py-5 rounded-2xl font-bold text-lg overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
-            boxShadow: '0 0 40px rgba(251,191,36,0.4), 0 0 16px rgba(249,115,22,0.45), 0 8px 32px rgba(0,0,0,0.5)',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
             color: '#fff',
             letterSpacing: '-0.01em',
           }}
