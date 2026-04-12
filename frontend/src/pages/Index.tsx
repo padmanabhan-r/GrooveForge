@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, KeyboardEvent } from 'react';
-import { Zap, Sparkles, Plus, X } from 'lucide-react';
+import { Zap, Sparkles, Plus, X, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
@@ -7,9 +7,15 @@ import InputPanels from '@/components/InputPanels';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import GenerationResult from '@/components/GenerationResult';
 import BlueprintCard from '@/components/BlueprintCard';
+import { BlueprintDeck } from '@/components/BlueprintDeck';
 import ReviewModal from '@/components/ReviewModal';
-import { generateTrack, previewGeneration, searchBlueprints, GenerateResponse, SearchResponse, Blueprint, PreviewResponse } from '@/lib/api';
+import { generateTrack, previewGeneration, searchBlueprints, analyzeLyrics, GenerateResponse, SearchResponse, Blueprint, PreviewResponse, LyricsAnalysis } from '@/lib/api';
+import LyricsAnalysisCard from '@/components/LyricsAnalysisCard';
 import { compileQuery, getNodeLabel } from '@/data/graphNodes';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
   graph: {
@@ -42,6 +48,7 @@ const Index = () => {
   // Step 1: search
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [lyricsAnalysis, setLyricsAnalysis] = useState<LyricsAnalysis | null>(null);
   const [selectedBlueprintIds, setSelectedBlueprintIds] = useState<Set<string>>(new Set());
 
   // Step 2: generate
@@ -58,6 +65,9 @@ const Index = () => {
   const [previewData, setPreviewData] = useState<PreviewResponse | null>(null);
   // Pending generate request — stored so confirm can fire it
   const pendingGenerate = useRef<Parameters<typeof generateTrack>[0] | null>(null);
+
+  // Pop-out deck dialog
+  const [deckPoppedOut, setDeckPoppedOut] = useState(false);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -77,27 +87,36 @@ const Index = () => {
     setIsSearching(true);
     setError(null);
     setSearchResults(null);
+    setLyricsAnalysis(null);
     setGenerationResult(null);
 
     try {
-      const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
-      const query = mode === 'graph'
-        ? {
-            ...baseQuery!,
-            free_text: [baseQuery!.free_text, ...extraVibes].filter(Boolean).join(' '),
-          }
-        : {
-            vibes: [],
-            free_text: mode === 'text' ? freeText : lyrics,
-            bpm_lower: null,
-            bpm_upper: null,
-            key: null,
-            vocal_type: null,
-            top_k: 8,
-          };
-      const result = await searchBlueprints(query);
-      setSearchResults(result);
-      setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+      if (mode === 'lyrics') {
+        const result = await analyzeLyrics(lyrics);
+        setLyricsAnalysis(result.analysis);
+        setSearchResults({ blueprints: result.blueprints, aggregated: result.aggregated });
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+        setGenerationMode('advanced');
+      } else {
+        const baseQuery = mode === 'graph' ? compileQuery(selectedNodes) : null;
+        const query = mode === 'graph'
+          ? {
+              ...baseQuery!,
+              free_text: [baseQuery!.free_text, ...extraVibes].filter(Boolean).join(' '),
+            }
+          : {
+              vibes: [],
+              free_text: freeText,
+              bpm_lower: null,
+              bpm_upper: null,
+              key: null,
+              vocal_type: null,
+              top_k: 8,
+            };
+        const result = await searchBlueprints(query);
+        setSearchResults(result);
+        setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed. Please try again.');
     } finally {
@@ -111,7 +130,9 @@ const Index = () => {
     if (blueprints.length === 0) return null;
     const user_input = mode === 'graph'
       ? selectedNodes.map(getNodeLabel).join(', ')
-      : mode === 'text' ? freeText : lyrics;
+      : mode === 'lyrics'
+      ? (lyricsAnalysis?.search_query ?? lyrics)
+      : freeText;
     return {
       vibes: [] as string[],
       free_text: '',
@@ -123,7 +144,7 @@ const Index = () => {
       generation_mode: generationMode,
       music_length_ms: musicLengthMs,
     };
-  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs]);
+  }, [searchResults, selectedBlueprintIds, mode, lyrics, freeText, selectedNodes, generationMode, musicLengthMs, lyricsAnalysis]);
 
   const handleGenerate = useCallback(async () => {
     const payload = _buildGeneratePayload();
@@ -177,6 +198,7 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setSearchResults(null);
+    setLyricsAnalysis(null);
     setGenerationResult(null);
     setSelectedBlueprintIds(new Set());
     setError(null);
@@ -243,12 +265,26 @@ const Index = () => {
             {/* State 2: blueprint selection */}
             {!generationResult && searchResults && (
               <>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
-                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
-                  <p className="mt-2 text-sm leading-6 text-white/62">
-                    These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
+                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
+                    <p className="mt-2 text-sm leading-6 text-white/62">
+                      These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setDeckPoppedOut(true)}
+                    className="flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 transition-all hover:brightness-110 mt-6"
+                    style={{
+                      background: 'rgba(99,102,241,0.08)',
+                      border: '1px solid rgba(99,102,241,0.25)',
+                      color: 'rgba(165,168,255,0.8)',
+                    }}
+                    title="Pop out to separate window"
+                  >
+                    <ExternalLink size={14} />
+                  </button>
                 </div>
 
                 {error && (
@@ -257,6 +293,12 @@ const Index = () => {
                     style={{ background: 'rgba(239,68,68,0.07)', color: 'rgba(255,180,180,0.9)' }}
                   >
                     {error}
+                  </div>
+                )}
+
+                {lyricsAnalysis && (
+                  <div className="mt-4">
+                    <LyricsAnalysisCard analysis={lyricsAnalysis} />
                   </div>
                 )}
 
@@ -619,6 +661,49 @@ const Index = () => {
           onCancel={() => { setPreviewData(null); pendingGenerate.current = null; }}
         />
       )}
+
+      {/* Pop-out deck dialog */}
+      <Dialog open={deckPoppedOut} onOpenChange={setDeckPoppedOut}>
+        <DialogContent
+          className="max-w-2xl w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] overflow-hidden flex flex-col p-0"
+          style={{
+            background: 'linear-gradient(180deg,rgba(10,16,32,0.95),rgba(8,12,24,0.92))',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          }}
+        >
+          {/* Pop-out header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
+              <h2 className="text-lg font-semibold text-white">Pick Your Sound</h2>
+            </div>
+          </div>
+
+          {/* Blueprint deck content — scrollable */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+            {searchResults && (
+              <BlueprintDeck
+                searchResults={searchResults}
+                selectedBlueprintIds={selectedBlueprintIds}
+                onToggleBlueprint={toggleBlueprint}
+                generationMode={generationMode}
+                onGenerationModeChange={setGenerationMode}
+                musicLengthMs={musicLengthMs}
+                onMusicLengthChange={setMusicLengthMs}
+                reviewMode={reviewMode}
+                onReviewModeChange={setReviewMode}
+                onGenerate={handleGenerate}
+                onReset={() => { setDeckPoppedOut(false); handleReset(); }}
+                isGenerating={isGenerating}
+                isPreviewing={isPreviewing}
+                error={error}
+                lyricsAnalysis={lyricsAnalysis}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
