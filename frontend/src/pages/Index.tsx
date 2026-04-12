@@ -1,23 +1,27 @@
 import { useState, useCallback } from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, Sparkles } from 'lucide-react';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
 import VibeGraph from '@/components/VibeGraph';
 import InputPanels from '@/components/InputPanels';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import VibePanel from '@/components/VibePanel';
+import GenerationResult from '@/components/GenerationResult';
+import BlueprintCard from '@/components/BlueprintCard';
+import { generateTrack, searchBlueprints, GenerateResponse, SearchResponse, Blueprint } from '@/lib/api';
+import { compileQuery } from '@/data/graphNodes';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
   graph: {
     label: 'Vibe Graph',
-    description: 'Click a root node to expand its traits. Drill into sub-nodes to refine your sound, then build your blueprint from the panel on the right.',
+    description: 'Click a root node to expand its traits. Drill into sub-nodes to refine your sound, then find matching blueprints from the panel on the right.',
   },
   text: {
     label: 'Free Text',
-    description: 'Describe your sound in plain language. We\'ll embed your query and retrieve matching musical blueprints to generate your track.',
+    description: 'Describe your sound in plain language. We\'ll embed your query and retrieve matching musical blueprints.',
   },
   lyrics: {
     label: 'Lyrics to Music',
-    description: 'Paste your original lyrics and we\'ll analyze tone, rhythm, and theme to find matching blueprints and generate a track tailored to your words.',
+    description: 'Paste your original lyrics and we\'ll analyze tone, rhythm, and theme to find matching blueprints.',
   },
   sound: {
     label: 'Sound Match',
@@ -28,6 +32,18 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
 const Index = () => {
   const [mode, setMode] = useState<AppMode>('graph');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [freeText, setFreeText] = useState('');
+  const [lyrics, setLyrics] = useState('');
+
+  // Step 1: search
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [selectedBlueprintIds, setSelectedBlueprintIds] = useState<Set<string>>(new Set());
+
+  // Step 2: generate
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResult, setGenerationResult] = useState<GenerateResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleNode = useCallback((id: string) => {
     setSelectedNodes(prev =>
@@ -35,15 +51,91 @@ const Index = () => {
     );
   }, []);
 
-  const handleGenerateBlueprint = useCallback(() => {}, []);
+  const toggleBlueprint = useCallback((id: string) => {
+    setSelectedBlueprintIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    setIsSearching(true);
+    setError(null);
+    setSearchResults(null);
+    setGenerationResult(null);
+
+    try {
+      const query = mode === 'graph'
+        ? compileQuery(selectedNodes)
+        : {
+            vibes: [],
+            free_text: mode === 'text' ? freeText : lyrics,
+            bpm_lower: null,
+            bpm_upper: null,
+            key: null,
+            vocal_type: null,
+            top_k: 8,
+          };
+      const result = await searchBlueprints(query);
+      setSearchResults(result);
+      setSelectedBlueprintIds(new Set(result.blueprints.map(bp => bp.id)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Search failed. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [mode, selectedNodes, freeText, lyrics]);
+
+  const handleGenerate = useCallback(async () => {
+    if (!searchResults) return;
+    const blueprints: Blueprint[] = searchResults.blueprints.filter(bp => selectedBlueprintIds.has(bp.id));
+    if (blueprints.length === 0) return;
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const result = await generateTrack({
+        vibes: [],
+        free_text: '',
+        blueprints,
+        bpm_lower: null,
+        bpm_upper: null,
+        lyrics: mode === 'lyrics' ? lyrics : '',
+        mode: mode === 'lyrics' ? 'composition_plan' : 'prompt',
+      });
+      setGenerationResult(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [searchResults, selectedBlueprintIds, mode, lyrics]);
+
+  const handleReset = useCallback(() => {
+    setSearchResults(null);
+    setGenerationResult(null);
+    setSelectedBlueprintIds(new Set());
+    setError(null);
+  }, []);
 
   const meta = MODE_META[mode];
+  const canSearch = mode === 'graph'
+    ? selectedNodes.length >= 1
+    : mode === 'text'
+    ? freeText.trim().length > 0
+    : mode === 'lyrics'
+    ? lyrics.trim().length > 0
+    : false;
+
+  const selectedBlueprints = searchResults?.blueprints.filter(bp => selectedBlueprintIds.has(bp.id)) ?? [];
 
   return (
     <div className="h-screen bg-background relative overflow-hidden">
       <AnimatedBackground isPlaying={false} />
 
-      {/* Main content grid — same layout for all modes */}
+      {/* Main content grid */}
       <div className="absolute inset-x-4 top-20 bottom-4 z-0 sm:inset-x-6 sm:top-24 sm:bottom-6 lg:inset-x-8 lg:top-28 lg:bottom-8">
         <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
 
@@ -51,35 +143,152 @@ const Index = () => {
           <div className="relative min-h-[420px]">
             {mode === 'graph'
               ? <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => setSelectedNodes([])} />
-              : <InputPanels mode={mode} onGenerate={handleGenerateBlueprint} />
+              : <InputPanels
+                  mode={mode}
+                  freeText={freeText}
+                  onFreeTextChange={setFreeText}
+                  lyrics={lyrics}
+                  onLyricsChange={setLyrics}
+                  onSearch={handleSearch}
+                  isSearching={isSearching}
+                />
             }
           </div>
 
-          {/* Right: selection deck — always visible */}
-          <aside className="glass-panel flex h-full min-h-[420px] flex-col justify-between rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)]">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Selection Deck</p>
-              <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Blueprint Inputs</h2>
-              <p className="mt-2 text-sm leading-6 text-white/62">
-                Every selected node is added here. Remove anything you do not want in the generated blueprint.
-              </p>
-            </div>
-            <VibePanel
-              selectedNodes={selectedNodes}
-              onRemoveNode={toggleNode}
-              onGenerate={handleGenerateBlueprint}
-              isGenerating={false}
-              title="Selected Vibes"
-              buttonLabel="Generate a Blueprint"
-              emptyMessage="Pick nodes from the graph to define genre, mood, texture, and energy before generating a blueprint."
-              minSelections={1}
-              className="mt-6 flex-1 border-white/0 bg-transparent p-0 shadow-none"
-            />
+          {/* Right: selection deck / blueprint results / generation result */}
+          <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
+
+            {/* State 3: generation result */}
+            {generationResult && (
+              <>
+                <GenerationResult result={generationResult} />
+                <button
+                  onClick={handleReset}
+                  className="mt-4 text-[10px] uppercase tracking-[0.2em] transition-opacity hover:opacity-80"
+                  style={{ color: 'rgba(255,255,255,0.32)' }}
+                >
+                  ← New generation
+                </button>
+              </>
+            )}
+
+            {/* State 2: blueprint selection */}
+            {!generationResult && searchResults && (
+              <>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
+                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/62">
+                    These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
+                  </p>
+                </div>
+
+                {error && (
+                  <div
+                    className="mt-4 rounded-xl border border-red-500/25 px-4 py-3 text-sm"
+                    style={{ background: 'rgba(239,68,68,0.07)', color: 'rgba(255,180,180,0.9)' }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-col gap-2 flex-1">
+                  {searchResults.blueprints.map((bp, i) => (
+                    <BlueprintCard
+                      key={bp.id}
+                      blueprint={bp}
+                      rank={i + 1}
+                      selected={selectedBlueprintIds.has(bp.id)}
+                      onToggle={() => toggleBlueprint(bp.id)}
+                      className="w-full"
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || selectedBlueprints.length === 0}
+                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
+                      boxShadow: '0 0 24px rgba(249,115,22,0.35)',
+                    }}
+                  >
+                    <Sparkles size={15} />
+                    {isGenerating ? 'Generating…' : `Generate Music · ${selectedBlueprints.length} blueprint${selectedBlueprints.length !== 1 ? 's' : ''}`}
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="text-[10px] uppercase tracking-[0.2em] text-center transition-opacity hover:opacity-80"
+                    style={{ color: 'rgba(255,255,255,0.32)' }}
+                  >
+                    ← Search again
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* State 1: initial selection deck */}
+            {!generationResult && !searchResults && (
+              <>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Selection Deck</p>
+                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Blueprint Inputs</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/62">
+                    {mode === 'graph'
+                      ? 'Every selected node is added here. Find blueprints when ready.'
+                      : 'Enter your query in the left panel, then find matching blueprints.'}
+                  </p>
+                </div>
+
+                {error && (
+                  <div
+                    className="mt-4 rounded-xl border border-red-500/25 px-4 py-3 text-sm"
+                    style={{ background: 'rgba(239,68,68,0.07)', color: 'rgba(255,180,180,0.9)' }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                {mode === 'graph' && (
+                  <VibePanel
+                    selectedNodes={selectedNodes}
+                    onRemoveNode={toggleNode}
+                    onGenerate={handleSearch}
+                    isGenerating={isSearching}
+                    title="Selected Vibes"
+                    buttonLabel="Find Blueprints"
+                    emptyMessage="Pick nodes from the graph to define genre, mood, texture, and energy."
+                    minSelections={1}
+                    className="mt-6 flex-1 border-white/0 bg-transparent p-0 shadow-none"
+                  />
+                )}
+
+                {mode !== 'graph' && (
+                  <div className="mt-6 flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                      >
+                        <Sparkles size={24} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                      </div>
+                      <p className="text-sm text-white/40 leading-6">
+                        {!canSearch
+                          ? 'Enter your query on the left to begin.'
+                          : 'Click Find Blueprints to search.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </aside>
         </div>
       </div>
 
-      {/* Floating title — top left */}
+      {/* Floating title */}
       <div className="absolute top-4 left-5 z-20 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center"
           style={{
@@ -106,9 +315,9 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Floating mode tabs — top right */}
+      {/* Floating mode tabs */}
       <div className="absolute top-4 right-4 z-20">
-        <ModeSwitcher active={mode} onChange={setMode} />
+        <ModeSwitcher active={mode} onChange={(m) => { setMode(m); handleReset(); }} />
       </div>
 
       {/* Powered-by footer */}
@@ -122,7 +331,7 @@ const Index = () => {
         </p>
       </div>
 
-      {/* Feature description — top left, below title, all modes */}
+      {/* Feature description */}
       <div className="pointer-events-none absolute left-5 top-[72px] z-10 hidden max-w-sm rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl md:block">
         <p className="text-[10px] uppercase tracking-[0.24em] text-sky-200/55">{meta.label}</p>
         <p className="mt-1 text-sm leading-5 text-white/72">{meta.description}</p>
