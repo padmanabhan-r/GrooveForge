@@ -19,6 +19,7 @@ async def _resolve_blueprints(request: GenerateRequest):
 
     search_req = SearchRequest(
         vibes=request.vibes,
+        free_text=request.free_text,
         bpm_lower=request.bpm_lower,
         bpm_upper=request.bpm_upper,
     )

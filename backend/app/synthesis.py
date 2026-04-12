@@ -1,16 +1,22 @@
 import logging
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from app.config import settings
 from app.models import AggregatedTraits
 
 logger = logging.getLogger(__name__)
 
+_GEMINI_MODEL = "gemini-2.5-flash"
+_client: genai.Client | None = None
 
-def _get_gemini() -> genai.GenerativeModel:
-    genai.configure(api_key=settings.gemini_api_key)
-    return genai.GenerativeModel("gemini-2.0-flash")
+
+def _get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.gemini_api_key)
+    return _client
 
 
 def build_prompt(aggregated: AggregatedTraits) -> str:
@@ -54,7 +60,6 @@ async def enrich_prompt(base_prompt: str, aggregated: AggregatedTraits) -> str:
         logger.warning("No Gemini key — using base prompt without LLM enrichment")
         return base_prompt
 
-    model = _get_gemini()
     prompt_text = (
         "You are a music production assistant. Given a musical profile derived from retrieved "
         "blueprint tracks, write a vivid, evocative music generation prompt. "
@@ -72,9 +77,11 @@ async def enrich_prompt(base_prompt: str, aggregated: AggregatedTraits) -> str:
     )
 
     try:
-        response = await model.generate_content_async(
-            prompt_text,
-            generation_config=genai.types.GenerationConfig(
+        client = _get_client()
+        response = await client.aio.models.generate_content(
+            model=_GEMINI_MODEL,
+            contents=prompt_text,
+            config=types.GenerateContentConfig(
                 max_output_tokens=200,
                 temperature=0.7,
             ),

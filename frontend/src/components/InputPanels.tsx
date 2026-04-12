@@ -3,10 +3,15 @@ import { Search, Music, AudioWaveform, Sparkles } from 'lucide-react';
 
 interface InputPanelsProps {
   mode: AppMode;
-  onGenerate: () => void;
+  freeText: string;
+  onFreeTextChange: (v: string) => void;
+  lyrics: string;
+  onLyricsChange: (v: string) => void;
+  onSearch: () => void;
+  isSearching: boolean;
 }
 
-export default function InputPanels({ mode, onGenerate }: InputPanelsProps) {
+export default function InputPanels({ mode, freeText, onFreeTextChange, lyrics, onLyricsChange, onSearch, isSearching }: InputPanelsProps) {
   if (mode === 'graph') return null;
 
   return (
@@ -34,6 +39,8 @@ export default function InputPanels({ mode, onGenerate }: InputPanelsProps) {
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 type="text"
+                value={freeText}
+                onChange={e => onFreeTextChange(e.target.value)}
                 placeholder="A nostalgic summer drive at sunset with synths and soft drums..."
                 className="w-full pl-11 pr-4 py-4 rounded-2xl text-sm text-white placeholder:text-white/28 focus:outline-none focus:ring-1 focus:ring-indigo-500/60"
                 style={{
@@ -44,14 +51,15 @@ export default function InputPanels({ mode, onGenerate }: InputPanelsProps) {
             </div>
 
             <button
-              onClick={onGenerate}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110"
+              onClick={onSearch}
+              disabled={isSearching || !freeText.trim()}
+              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
                 boxShadow: '0 0 24px rgba(249,115,22,0.35)',
               }}
             >
-              <Sparkles size={15} /> Generate from Description
+              <Sparkles size={15} /> {isSearching ? 'Searching…' : 'Find Blueprints'}
             </button>
           </div>
         )}
@@ -67,6 +75,8 @@ export default function InputPanels({ mode, onGenerate }: InputPanelsProps) {
             </div>
 
             <textarea
+              value={lyrics}
+              onChange={e => onLyricsChange(e.target.value)}
               placeholder={"Write or paste your original lyrics here...\n\nThe app will analyze mood, rhythm, and theme to generate a matching track."}
               rows={10}
               className="w-full px-4 py-4 rounded-2xl text-sm text-white placeholder:text-white/28 focus:outline-none focus:ring-1 focus:ring-indigo-500/60 resize-none"
@@ -77,14 +87,15 @@ export default function InputPanels({ mode, onGenerate }: InputPanelsProps) {
             />
 
             <button
-              onClick={onGenerate}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110"
+              onClick={onSearch}
+              disabled={isSearching || !lyrics.trim()}
+              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #dc6b08 100%)',
                 boxShadow: '0 0 24px rgba(249,115,22,0.35)',
               }}
             >
-              <Music size={15} /> Generate from Lyrics
+              <Music size={15} /> {isSearching ? 'Searching…' : 'Find Blueprints'}
             </button>
           </div>
         )}

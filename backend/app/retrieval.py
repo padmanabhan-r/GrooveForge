@@ -1,13 +1,35 @@
 import asyncio
 import logging
 from collections import Counter
+from functools import lru_cache
 
 import turbopuffer
+from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 from app.models import AggregatedTraits, Blueprint, SearchRequest
 
 logger = logging.getLogger(__name__)
+
+_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+# RRF constant — standard default; higher k reduces impact of top ranks
+_RRF_K = 60
+
+# Only the "text" attribute was indexed with full_text_search: True at ingest time
+
+
+@lru_cache(maxsize=1)
+def _get_embedder() -> SentenceTransformer:
+    """Lazy-load and cache the MiniLM model (loaded once per process)."""
+    logger.info("Loading embedding model %s", _EMBED_MODEL)
+    return SentenceTransformer(_EMBED_MODEL)
+
+
+def _embed(text: str) -> list[float]:
+    model = _get_embedder()
+    vec = model.encode(text, normalize_embeddings=True)
+    return vec.tolist()
 
 
 def _get_client() -> turbopuffer.AsyncTurbopuffer:
@@ -56,6 +78,73 @@ def _row_to_blueprint(row, score: float = 0.0) -> Blueprint:
     )
 
 
+def _rrf_merge(result_lists: list[list[Blueprint]], k: int = _RRF_K) -> list[Blueprint]:
+    """Reciprocal Rank Fusion across multiple ranked result lists."""
+    scores: dict[str, float] = {}
+    best: dict[str, Blueprint] = {}
+
+    for ranked in result_lists:
+        for rank, bp in enumerate(ranked):
+            scores[bp.id] = scores.get(bp.id, 0.0) + 1.0 / (k + rank + 1)
+            # Keep whichever blueprint instance we see first (they're identical)
+            if bp.id not in best:
+                best[bp.id] = bp
+
+    sorted_ids = sorted(scores, key=scores.__getitem__, reverse=True)
+    merged = []
+    for bid in sorted_ids:
+        bp = best[bid]
+        # Attach RRF score as similarity_score for frontend display
+        bp.similarity_score = round(scores[bid], 4)
+        merged.append(bp)
+    return merged
+
+
+async def _hybrid_query_namespace(
+    client: turbopuffer.AsyncTurbopuffer,
+    namespace: str,
+    query_text: str,
+    query_vector: list[float],
+    top_k: int,
+    filters: list,
+) -> tuple[list[Blueprint], list[Blueprint]]:
+    """Run ANN + weighted BM25 as a single multi_query against one namespace.
+
+    Returns (ann_results, bm25_results) for downstream RRF merging.
+    """
+    ns = client.namespace(namespace)
+
+    ann_query: dict = {
+        "rank_by": ("vector", "ANN", query_vector),
+        "top_k": top_k,
+        "include_attributes": True,
+        "consistency": {"level": "eventual"},
+    }
+    bm25_query: dict = {
+        "rank_by": ("text", "BM25", query_text),
+        "top_k": top_k,
+        "include_attributes": True,
+        "consistency": {"level": "eventual"},
+    }
+
+    if filters:
+        filter_expr = ["And", filters] if len(filters) > 1 else filters[0]
+        ann_query["filters"] = filter_expr
+        bm25_query["filters"] = filter_expr
+
+    try:
+        response = await ns.multi_query(queries=[ann_query, bm25_query])
+        results = response.results or [None, None]
+        ann_rows = results[0].rows if results[0] else []
+        bm25_rows = results[1].rows if results[1] else []
+        ann_blueprints = [_row_to_blueprint(r) for r in (ann_rows or [])]
+        bm25_blueprints = [_row_to_blueprint(r) for r in (bm25_rows or [])]
+        return ann_blueprints, bm25_blueprints
+    except Exception:
+        logger.exception("Turbopuffer hybrid query failed for namespace %s", namespace)
+        return [], []
+
+
 def aggregate_blueprints(blueprints: list[Blueprint]) -> AggregatedTraits:
     if not blueprints:
         return AggregatedTraits(
@@ -98,37 +187,19 @@ def aggregate_blueprints(blueprints: list[Blueprint]) -> AggregatedTraits:
     )
 
 
-async def _query_namespace(
-    client: turbopuffer.AsyncTurbopuffer,
-    namespace: str,
-    query_text: str,
-    top_k: int,
-    filters: list,
-) -> list[Blueprint]:
-    ns = client.namespace(namespace)
-    query_kwargs: dict = {
-        "rank_by": ["BM25", "text", query_text],
-        "top_k": top_k,
-        "include_attributes": True,
-    }
-    if filters:
-        query_kwargs["filters"] = ["And", filters] if len(filters) > 1 else filters[0]
-    try:
-        response = await ns.query(**query_kwargs)
-        return [_row_to_blueprint(row) for row in (response.rows or [])]
-    except Exception:
-        logger.exception("Turbopuffer query failed for namespace %s", namespace)
-        return []
-
-
 async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
     query_text = _build_query_text(request)
     logger.info(
-        "Turbopuffer query: %r top_k=%d namespaces=[%s, %s]",
+        "Hybrid query: %r top_k=%d namespaces=[%s, %s]",
         query_text,
         request.top_k,
         settings.active_ns_lp,
         settings.active_ns_fma,
+    )
+
+    # Embed once; reused across both namespaces
+    query_vector = await asyncio.get_event_loop().run_in_executor(
+        None, _embed, query_text
     )
 
     filters: list = []
@@ -140,34 +211,50 @@ async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
         filters.append(["vocal_type", "Eq", request.vocal_type])
 
     client = _get_client()
-    lp_results, fma_results = await asyncio.gather(
-        _query_namespace(client, settings.active_ns_lp, query_text, request.top_k, filters),
-        _query_namespace(client, settings.active_ns_fma, query_text, request.top_k, filters),
+    (lp_ann, lp_bm25), (fma_ann, fma_bm25) = await asyncio.gather(
+        _hybrid_query_namespace(
+            client, settings.active_ns_lp, query_text, query_vector, request.top_k, filters
+        ),
+        _hybrid_query_namespace(
+            client, settings.active_ns_fma, query_text, query_vector, request.top_k, filters
+        ),
     )
 
-    # Merge, deduplicate by id, sort by similarity (higher BM25 rank = lower dist)
-    seen: set[str] = set()
-    merged: list[Blueprint] = []
-    for bp in lp_results + fma_results:
-        if bp.id not in seen:
-            seen.add(bp.id)
-            merged.append(bp)
-
+    # RRF across all four ranked lists
+    merged = _rrf_merge([lp_ann, lp_bm25, fma_ann, fma_bm25])
     return merged[: request.top_k]
 
 
 async def search_by_artist(artist: str, top_k: int = 8) -> list[Blueprint]:
-    client = _get_client()
-    lp_results, fma_results = await asyncio.gather(
-        _query_namespace(client, settings.active_ns_lp, artist, top_k, []),
-        _query_namespace(client, settings.active_ns_fma, artist, top_k, []),
+    query_vector = await asyncio.get_event_loop().run_in_executor(
+        None, _embed, artist
     )
-
-    seen: set[str] = set()
-    merged: list[Blueprint] = []
-    for bp in lp_results + fma_results:
-        if bp.id not in seen:
-            seen.add(bp.id)
-            merged.append(bp)
-
+    client = _get_client()
+    (lp_ann, lp_bm25), (fma_ann, fma_bm25) = await asyncio.gather(
+        _hybrid_query_namespace(client, settings.active_ns_lp, artist, query_vector, top_k, []),
+        _hybrid_query_namespace(client, settings.active_ns_fma, artist, query_vector, top_k, []),
+    )
+    merged = _rrf_merge([lp_ann, lp_bm25, fma_ann, fma_bm25])
     return merged[:top_k]
+
+
+async def warm_cache() -> None:
+    """Pre-flight query to warm both namespace caches on server startup."""
+    try:
+        client = _get_client()
+        warm_vec = [0.0] * 384
+        await asyncio.gather(
+            client.namespace(settings.active_ns_lp).query(
+                rank_by=("vector", "ANN", warm_vec),
+                top_k=1,
+                consistency={"level": "eventual"},
+            ),
+            client.namespace(settings.active_ns_fma).query(
+                rank_by=("vector", "ANN", warm_vec),
+                top_k=1,
+                consistency={"level": "eventual"},
+            ),
+        )
+        logger.info("Turbopuffer namespace caches warmed")
+    except Exception:
+        logger.warning("Cache warm-up failed (non-fatal)", exc_info=True)

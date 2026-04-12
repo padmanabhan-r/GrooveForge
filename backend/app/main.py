@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,11 +11,27 @@ from app.routes import generate, health, search
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
-app = FastAPI(title="GrooveForge API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm namespace caches and pre-load embedding model on startup
+    from app.retrieval import _get_embedder, warm_cache
+
+    await asyncio.get_event_loop().run_in_executor(None, _get_embedder)
+    asyncio.create_task(warm_cache())
+    yield
+
+
+app = FastAPI(title="GrooveForge API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://localhost:4173",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

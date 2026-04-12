@@ -51,6 +51,7 @@ class SearchResponse(BaseModel):
 
 class GenerateRequest(BaseModel):
     vibes: list[str] = []
+    free_text: str = ""
     blueprints: list[Blueprint] = []
     bpm_lower: float | None = None
     bpm_upper: float | None = None

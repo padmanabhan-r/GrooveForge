@@ -52,6 +52,7 @@ export interface SearchResponse {
 
 export interface GenerateRequest {
   vibes: string[];
+  free_text: string;
   blueprints: Blueprint[];
   bpm_lower: number | null;
   bpm_upper: number | null;
