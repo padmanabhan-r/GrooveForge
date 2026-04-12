@@ -125,6 +125,32 @@ def _fallback_plan(
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _distinct_genres(blueprints: list[Blueprint]) -> list[str]:
+    """Return deduplicated genre list from the blueprint set, ignoring 'unknown'."""
+    seen: dict[str, None] = {}
+    for bp in blueprints:
+        g = (bp.genre or "").strip().lower()
+        if g and g != "unknown":
+            seen[g] = None
+    return list(seen)
+
+
+def _fusion_hint(genres: list[str]) -> str:
+    """Return a fusion instruction when multiple genres are present."""
+    if len(genres) < 2:
+        return ""
+    genre_list = ", ".join(genres)
+    return (
+        f"- The blueprints span multiple genres ({genre_list}). "
+        "The user is likely seeking a genre fusion — deliberately blend elements from all "
+        "represented genres rather than defaulting to a single dominant one.\n"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Gemini synthesis functions
 # ---------------------------------------------------------------------------
 
@@ -143,12 +169,14 @@ async def synthesize_simple(
 
     length_s = music_length_ms // 1000
     blueprint_ctx = _blueprint_context(blueprints)
+    fusion = _fusion_hint(_distinct_genres(blueprints))
 
     system_prompt = (
         "You are a music production AI. Your job is to write a vivid, evocative music generation "
         "prompt that will be sent to ElevenLabs Music API.\n\n"
         "Rules:\n"
         "- The user's input has PRIMARY importance — honour their genre/mood/key/tempo choices exactly.\n"
+        f"{fusion}"
         "- Use the retrieved blueprint traits to add nuance, texture, and specificity.\n"
         "- Do NOT fabricate traits absent from both the input and the blueprints.\n"
         "- NEVER mention any real artist names, band names, song titles, or album names. "
@@ -199,6 +227,7 @@ async def synthesize_advanced(
 
     length_s = music_length_ms // 1000
     blueprint_ctx = _blueprint_context(blueprints)
+    fusion = _fusion_hint(_distinct_genres(blueprints))
     lyrics_note = (
         f"\nLyrics provided (MUST go into section `lines` only, never into styles):\n{lyrics}\n"
         if lyrics else ""
@@ -208,6 +237,7 @@ async def synthesize_advanced(
         "You are a music production AI. Generate a structured composition plan for ElevenLabs Music API.\n\n"
         "Rules:\n"
         "- The user's input has PRIMARY importance — honour genre/mood/key/tempo exactly.\n"
+        f"{fusion}"
         "- Blueprint traits provide nuance — use acousticness, energy, valence, danceability, "
         "instrumentalness, liveness, speechiness, and loudness to inform style descriptors.\n"
         "- Do NOT fabricate traits.\n"
