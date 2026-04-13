@@ -473,7 +473,7 @@ const Index = () => {
               <>
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Selection Deck</p>
-                  <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Blueprint Inputs</h2>
+                  <h2 className="mt-3 text-base font-semibold tracking-[-0.02em] text-white">Blueprint Inputs</h2>
                   <p className="mt-2 text-sm leading-6 text-white/62">
                     {mode === 'graph'
                       ? 'Every selected node is added here. Find blueprints when ready.'
