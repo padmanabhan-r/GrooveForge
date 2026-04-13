@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Zap, Sparkles, Plus, X, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ModeSwitcher, { AppMode } from '@/components/ModeSwitcher';
@@ -634,7 +635,7 @@ const Index = () => {
       </div>
 
       {/* Floating title */}
-      <div className="absolute top-4 left-5 z-20 flex items-center gap-3">
+      <Link to="/" className="absolute top-4 left-5 z-20 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
             background: 'rgba(255,255,255,0.08)',
@@ -662,7 +663,7 @@ const Index = () => {
             GrooveForge
           </p>
         </div>
-      </div>
+      </Link>
 
       {/* Floating mode tabs */}
       <div className="absolute top-4 right-4 z-20">
