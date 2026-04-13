@@ -165,7 +165,7 @@ export default function Landing() {
           transition={{ delay: 0.85, duration: 0.6 }}
           className="flex flex-wrap items-center justify-center gap-2 mb-12 max-w-lg"
         >
-          {['Vibe Graph', 'Blueprint RAG', 'Free Text', 'Lyrics to Music', 'Sound Match'].map(label => (
+          {['Vibe Graph', 'Sound Match', 'Audio Blueprint RAG', 'Text to Music', 'Lyrics to Music'].map(label => (
             <Pill key={label} label={label} />
           ))}
         </motion.div>
