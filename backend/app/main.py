@@ -32,6 +32,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8080",
         "http://localhost:4173",
+        "https://groove-forge.vercel.app",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
