@@ -144,7 +144,18 @@ export default function Landing() {
           className="mb-10 text-sm uppercase tracking-[0.26em] font-semibold"
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
-          Powered by rich data from Last.fm · Free Music Archive · Million Song Dataset · MusicCaps
+          A MUSICIAN'S ULTIMATE ORIGINAL MUSIC GENERATION TOOLKIT
+        </motion.p>
+
+        {/* Data sources */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.85, duration: 0.7 }}
+          className="mb-12 text-xs uppercase tracking-[0.22em] font-medium"
+          style={{ color: 'rgba(255,255,255,0.38)' }}
+        >
+          Powered by Last.fm · Free Music Archive · Million Song Dataset · MusicCaps
         </motion.p>
 
         {/* Feature pills */}
