@@ -133,7 +133,7 @@ export default function Landing() {
           className="max-w-2xl mb-3 leading-relaxed"
           style={{ fontSize: 'clamp(16px, 2.4vw, 22px)', color: 'rgba(255,255,255,0.62)' }}
         >
-          Search through millions of arrangements and compositions
+          Search through millions of arrangements and compositions and forge your grooves
         </motion.p>
 
         {/* Sub-tagline */}
