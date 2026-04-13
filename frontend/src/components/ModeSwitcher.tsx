@@ -4,9 +4,9 @@ export type AppMode = 'graph' | 'text' | 'lyrics' | 'sound';
 
 const modes: { id: AppMode; label: string; icon: typeof Network }[] = [
   { id: 'graph',  label: 'Vibe Graph',   icon: Network        },
+  { id: 'sound',  label: 'Sound Match',  icon: AudioWaveform  },
   { id: 'text',   label: 'Free Text',    icon: MessageSquare  },
   { id: 'lyrics', label: 'Lyrics',       icon: FileText       },
-  { id: 'sound',  label: 'Sound Match',  icon: AudioWaveform  },
 ];
 
 interface ModeSwitcherProps {
