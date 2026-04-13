@@ -20,14 +20,40 @@ function load(): HistoryEntry[] {
   }
 }
 
+/**
+ * Strip bulky fields before persisting. HistoryPanel only needs:
+ * audio_url, aggregated, blueprints.length.
+ * Drop text_description/tags/caption_summary from blueprints (can be KB each)
+ * and composition_plan (large multi-section object in advanced mode).
+ */
+function serializeEntries(entries: HistoryEntry[]): HistoryEntry[] {
+  return entries.map(e => ({
+    ...e,
+    result: {
+      ...e.result,
+      composition_plan: null,
+      blueprints: e.result.blueprints.map(bp => ({
+        ...bp,
+        text_description: '',
+        tags: '',
+        caption_summary: '',
+      })),
+    },
+  }));
+}
+
 function save(entries: HistoryEntry[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // localStorage full — drop oldest
-    const trimmed = entries.slice(0, MAX_ENTRIES - 5);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+  const attempts = [entries, entries.slice(0, 20), entries.slice(0, 5)];
+  for (const batch of attempts) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeEntries(batch)));
+      return;
+    } catch {
+      // quota exceeded — try a smaller batch
+    }
   }
+  // All attempts failed — clear rather than crash
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }
 
 export function useHistory() {

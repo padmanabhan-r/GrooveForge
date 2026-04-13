@@ -20,6 +20,8 @@ import { compileQuery, getNodeLabel } from '@/data/graphNodes';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
@@ -746,7 +748,8 @@ const Index = () => {
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <div>
               <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
-              <h2 className="text-lg font-semibold text-white">Pick Your Sound</h2>
+              <DialogTitle className="text-lg font-semibold text-white">Pick Your Sound</DialogTitle>
+              <DialogDescription className="sr-only">Browse and select from the retrieved musical blueprints</DialogDescription>
               <p className="mt-1 text-sm text-white/55">Remove blueprints that don't fit your vision — only the ones you keep will shape the track.</p>
             </div>
           </div>
