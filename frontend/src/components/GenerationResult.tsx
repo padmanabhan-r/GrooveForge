@@ -200,7 +200,6 @@ function resolveDisplayTags(tags: DisplayTags | null, aggregated: GenerateRespon
     { label: 'Key',    value: t.key || aggregated.mode_key || '—' },
     { label: 'Genre',  value: t.genre || aggregated.genre_cluster || '—' },
     { label: 'Mood',   value: t.mood || aggregated.mood_cluster || '—' },
-    { label: 'Vocal',  value: t.vocal_type || '—' },
     { label: 'Energy', value: t.energy_pct && t.energy_pct > 0 ? `${t.energy_pct}%` : (aggregated.energy > 0 ? `${Math.round(aggregated.energy * 100)}%` : '—') },
   ];
 }
