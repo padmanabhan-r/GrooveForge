@@ -49,7 +49,8 @@ STATIC_DIR = Path(__file__).parent.parent / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-app.include_router(health.router, prefix="/api")
+app.include_router(health.router)           # /health  (Railway healthcheck)
+app.include_router(health.router, prefix="/api")  # /api/health
 app.include_router(search.router, prefix="/api")
 app.include_router(generate.router, prefix="/api")
 app.include_router(lyrics.router, prefix="/api")
