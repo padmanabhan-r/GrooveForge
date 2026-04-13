@@ -130,10 +130,10 @@ export default function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.55, duration: 0.7 }}
-          className="max-w-2xl mb-3 leading-relaxed"
-          style={{ fontSize: 'clamp(16px, 2.4vw, 22px)', color: 'rgba(255,255,255,0.62)' }}
+          className="mb-4 text-sm uppercase tracking-[0.26em] font-semibold"
+          style={{ color: 'rgba(255,255,255,0.55)' }}
         >
-          Search through millions of arrangements and compositions and forge your grooves
+          A MUSICIAN'S ULTIMATE ORIGINAL MUSIC GENERATION TOOLKIT
         </motion.p>
 
         {/* Sub-tagline */}
@@ -141,10 +141,10 @@ export default function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.7 }}
-          className="mb-10 text-sm uppercase tracking-[0.26em] font-semibold"
-          style={{ color: 'rgba(255,255,255,0.55)' }}
+          className="max-w-2xl mb-10 leading-relaxed"
+          style={{ fontSize: 'clamp(16px, 2.4vw, 22px)', color: 'rgba(255,255,255,0.62)' }}
         >
-          A MUSICIAN'S ULTIMATE ORIGINAL MUSIC GENERATION TOOLKIT
+          Search through millions of arrangements and compositions and forge your grooves
         </motion.p>
 
         {/* Data sources */}
