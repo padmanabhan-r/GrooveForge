@@ -382,3 +382,17 @@ Response: { "status": "ok" }
 **No audio files are processed, stored, or used.** Only structured features (BPM, key, genre, energy) and descriptive text (mood, themes, instrumentation captions) are indexed.
 
 **Generated music** is original output from ElevenLabs Music API — not a copy or derivative of any indexed track. Artist names from retrieval results are never passed to the generator.
+
+---
+
+## License
+
+<p>
+  <a href="https://creativecommons.org/licenses/by/4.0/">
+    <img src="https://licensebuttons.net/l/by/4.0/88x31.png" alt="CC BY 4.0" />
+  </a>
+</p>
+
+This project is licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+
+You are free to share and adapt the material for any purpose, even commercially, as long as you give appropriate credit.
