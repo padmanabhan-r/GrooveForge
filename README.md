@@ -223,16 +223,17 @@ Composition plan structure:
 
 ## Screenshots
 
-<!-- Screenshots: Blueprint cards + Generation result — replace with actual screenshots -->
 <p align="center">
-  <img src="images/6-blueprint-cards.png" alt="Blueprint cards — BPM chip, key badge, energy bar, genre" width="340" />
-  <img src="images/7-generation-result.png" alt="Generated track hero — audio player, reasoning trail" width="340" />
+  <img src="images/6-blueprint-cards.png" alt="Blueprint cards — BPM chip, key badge, energy bar, genre" width="700" />
 </p>
-
-<!-- Screenshots: Review modal + Generating overlay — replace with actual screenshots -->
 <p align="center">
-  <img src="images/8-review-modal.png" alt="Review composition plan before sending to ElevenLabs" width="340" />
-  <img src="images/9-generating-overlay.png" alt="Animated two-phase loading overlay" width="340" />
+  <img src="images/7-generation-result.png" alt="Generated track hero — audio player, reasoning trail" width="700" />
+</p>
+<p align="center">
+  <img src="images/8-review-modal.png" alt="Review composition plan before sending to ElevenLabs" width="700" />
+</p>
+<p align="center">
+  <img src="images/9-generating-overlay.png" alt="Animated two-phase loading overlay" width="700" />
 </p>
 
 ---
