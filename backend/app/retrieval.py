@@ -1,35 +1,52 @@
 import asyncio
 import logging
 from collections import Counter
-from functools import lru_cache
 
 import turbopuffer
-from sentence_transformers import SentenceTransformer
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.models import AggregatedTraits, Blueprint, SearchRequest
 
 logger = logging.getLogger(__name__)
 
-_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+_EMBED_MODEL = "sentence-transformers/all-minilm-l6-v2"
 
 # RRF constant — standard default; higher k reduces impact of top ranks
 _RRF_K = 60
 
 # Only the "text" attribute was indexed with full_text_search: True at ingest time
 
-
-@lru_cache(maxsize=1)
-def _get_embedder() -> SentenceTransformer:
-    """Lazy-load and cache the MiniLM model (loaded once per process)."""
-    logger.info("Loading embedding model %s", _EMBED_MODEL)
-    return SentenceTransformer(_EMBED_MODEL)
+_oai_client: AsyncOpenAI | None = None
 
 
-def _embed(text: str) -> list[float]:
-    model = _get_embedder()
-    vec = model.encode(text, normalize_embeddings=True)
-    return vec.tolist()
+def init_oai_client() -> None:
+    global _oai_client
+    _oai_client = AsyncOpenAI(
+        api_key=settings.openrouter_api_key,
+        base_url="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": "https://groove-forge.vercel.app",
+            "X-OpenRouter-Title": "GrooveForge",
+        },
+    )
+
+
+async def close_oai_client() -> None:
+    global _oai_client
+    if _oai_client is not None:
+        await _oai_client.close()
+        _oai_client = None
+
+
+async def _embed(text: str) -> list[float]:
+    assert _oai_client is not None, "OpenAI client not initialised"
+    response = await _oai_client.embeddings.create(
+        model=_EMBED_MODEL,
+        input=text,
+        encoding_format="float",
+    )
+    return response.data[0].embedding
 
 
 _tpuf_client: turbopuffer.AsyncTurbopuffer | None = None
@@ -227,9 +244,7 @@ async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
     )
 
     # Embed once; reused across both namespaces
-    query_vector = await asyncio.get_event_loop().run_in_executor(
-        None, _embed, query_text
-    )
+    query_vector = await _embed(query_text)
 
     filters: list = []
     if request.bpm_lower is not None:
@@ -255,9 +270,7 @@ async def search_blueprints(request: SearchRequest) -> list[Blueprint]:
 
 
 async def search_by_artist(artist: str, top_k: int = 8) -> list[Blueprint]:
-    query_vector = await asyncio.get_event_loop().run_in_executor(
-        None, _embed, artist
-    )
+    query_vector = await _embed(artist)
     client = get_tpuf_client()
     (lp_ann, lp_bm25), (fma_ann, fma_bm25) = await asyncio.gather(
         _hybrid_query_namespace(client, settings.active_ns_lp, artist, query_vector, top_k, []),

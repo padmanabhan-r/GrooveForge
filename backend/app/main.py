@@ -12,22 +12,22 @@ from app.routes import generate, health, lyrics, search, sound
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
 
-async def _background_init() -> None:
-    from app.retrieval import _get_embedder, warm_cache
-
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _get_embedder)
-    asyncio.create_task(warm_cache())
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.retrieval import close_tpuf_client, init_tpuf_client
+    from app.retrieval import (
+        close_oai_client,
+        close_tpuf_client,
+        init_oai_client,
+        init_tpuf_client,
+        warm_cache,
+    )
 
     init_tpuf_client()
-    asyncio.create_task(_background_init())
+    init_oai_client()
+    asyncio.create_task(warm_cache())
     yield
     await close_tpuf_client()
+    await close_oai_client()
 
 
 app = FastAPI(title="GrooveForge API", version="0.1.0", lifespan=lifespan)
