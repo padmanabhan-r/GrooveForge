@@ -178,6 +178,7 @@ const Index = () => {
       try {
         const preview = await previewGeneration(payload);
         pendingGenerate.current = payload;
+        setDeckPoppedOut(false);
         setPreviewData(preview);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Preview failed. Please try again.');

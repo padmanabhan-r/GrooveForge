@@ -103,7 +103,7 @@ export default function GeneratingOverlay({ phase }: Props) {
 
       {/* Sub-label */}
       {phase === 'generating' && (
-        <p className="mt-3 text-[13px] text-white/35">ElevenLabs Music API · blueprint-grounded prompt</p>
+        <p className="mt-3 text-[13px] text-white/35">ElevenLabs Music API</p>
       )}
     </motion.div>
   );
