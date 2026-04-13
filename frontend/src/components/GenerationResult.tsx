@@ -201,7 +201,7 @@ export default function GenerationResult({ result }: GenerationResultProps) {
       {/* Header */}
       <div>
         <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55 mb-1">Generated Track</p>
-        <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Your Blueprint</h2>
+        <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Your Generated Track</h2>
       </div>
 
       {/* Aggregated traits */}

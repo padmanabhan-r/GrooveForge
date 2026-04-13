@@ -137,7 +137,7 @@ function NodeCircle({ pos, r, hue, selected, hovered, label, fontSize, onClick, 
       animate={{ scale: 1, opacity: 1, y: [0, -floatOffset, 0] }}
       exit={{ scale: 0, opacity: 0 }}
       transition={{
-        scale: { type: 'spring', stiffness: 340, damping: 26, delay },
+        scale: { type: 'spring', stiffness: 340, damping: 38, delay },
         opacity: { duration: 0.22, delay },
         y: { duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + floatSeed * 0.03 },
       }}
@@ -228,6 +228,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
   const [expandedL1s,   setExpandedL1s  ] = useState<Set<string>>(new Set());
   const [hovered,       setHovered      ] = useState<string | null>(null);
   const [dragging,      setDragging     ] = useState(false);
+  const [fitted,        setFitted       ] = useState(false);
   const [nodePositions, setNodePositions] = useState<Record<string, Pt>>({});
   const dragRef = useRef<DragTarget | null>(null);
   const suppressClickRef = useRef<Set<string>>(new Set());
@@ -261,6 +262,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
     const s = Math.min((vw - paddingX * 2) / 1600, (vh - paddingY * 2) / 900);
     const scale = Math.max(0.3, s);
     setView({ x: (vw - 1600 * scale) / 2, y: (vh - 900 * scale) / 2, scale });
+    setFitted(true);
   }, []);
 
   useEffect(() => {
@@ -499,7 +501,7 @@ export default function VibeGraph({ selectedNodes, onToggleNode, onClearSelectio
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(121,163,255,0.1),transparent_24%),radial-gradient(circle_at_78%_22%,rgba(85,132,246,0.08),transparent_22%),radial-gradient(circle_at_50%_82%,rgba(78,111,196,0.07),transparent_24%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.035] to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/24 to-transparent" />
-      <svg ref={svgRef} className="w-full h-full" style={{ display: 'block' }}>
+      <svg ref={svgRef} className="w-full h-full" style={{ display: 'block', visibility: fitted ? 'visible' : 'hidden' }}>
         <defs>
           <radialGradient id="sphere-gloss" cx="38%" cy="32%" r="70%" fx="32%" fy="26%">
             <stop offset="0%"   stopColor="rgba(255,255,255,0.40)" />
