@@ -244,7 +244,7 @@ const Index = () => {
 
       {/* Main content grid */}
       <div className="absolute inset-x-4 top-20 bottom-4 z-0 sm:inset-x-6 sm:top-24 sm:bottom-6 lg:inset-x-8 lg:top-28 lg:bottom-8">
-        <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_352px]">
 
           {/* Left: main panel */}
           <div className="relative min-h-[420px]">
