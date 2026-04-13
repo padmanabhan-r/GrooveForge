@@ -264,20 +264,41 @@ const Index = () => {
 
       {/* Main content grid */}
       <div className="absolute inset-x-4 top-20 bottom-4 z-0 sm:inset-x-6 sm:top-24 sm:bottom-6 lg:inset-x-8 lg:top-28 lg:bottom-8">
-        <div className={`grid h-full grid-cols-1 gap-4 ${mode !== 'history' ? 'xl:grid-cols-[minmax(0,1fr)_352px]' : ''}`}>
+        <div className={`grid h-full grid-cols-1 gap-4 ${mode !== 'history' && !generationResult ? 'xl:grid-cols-[minmax(0,1fr)_352px]' : ''}`}>
 
           {/* Left: main panel */}
           <div className="relative min-h-[420px]">
+            {/* Generated result — full width hero */}
+            {generationResult && (
+              <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-6 overflow-y-auto shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)]">
+                <GenerationResult result={generationResult} />
+                <button
+                  onClick={handleReset}
+                  className="mt-6 flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 hover:brightness-125 active:scale-[0.97]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.28) 0%, rgba(79,82,221,0.18) 100%)',
+                    border: '1px solid rgba(99,102,241,0.5)',
+                    color: 'rgba(180,182,255,0.95)',
+                    boxShadow: '0 0 0 1px rgba(99,102,241,0.1) inset, 0 4px 16px rgba(99,102,241,0.12)',
+                  }}
+                >
+                  ← New Generation
+                </button>
+              </div>
+            )}
+
             {/* Keep VibeGraph mounted at all times to prevent spring re-animation on tab switch */}
-            <div style={{ display: mode === 'graph' ? 'block' : 'none' }} className="absolute inset-0">
-              <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => { setSelectedNodes([]); setGraphResetKey(k => k + 1); }} resetKey={graphResetKey} />
-            </div>
-            {mode === 'history' && (
+            {!generationResult && (
+              <div style={{ display: mode === 'graph' ? 'block' : 'none' }} className="absolute inset-0">
+                <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => { setSelectedNodes([]); setGraphResetKey(k => k + 1); }} resetKey={graphResetKey} />
+              </div>
+            )}
+            {!generationResult && mode === 'history' && (
               <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-6 overflow-y-auto shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                 <HistoryPanel entries={historyEntries} onRename={renameEntry} onRemove={removeEntry} />
               </div>
             )}
-            {mode !== 'graph' && mode !== 'history' && (
+            {!generationResult && mode !== 'graph' && mode !== 'history' && (
               <InputPanels
                 mode={mode}
                 freeText={freeText}
@@ -292,25 +313,11 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right: selection deck / blueprint results / generation result */}
-          {mode !== 'history' && <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
-
-            {/* State 3: generation result */}
-            {generationResult && (
-              <>
-                <GenerationResult result={generationResult} />
-                <button
-                  onClick={handleReset}
-                  className="mt-4 text-[10px] uppercase tracking-[0.2em] transition-opacity hover:opacity-80"
-                  style={{ color: 'rgba(255,255,255,0.32)' }}
-                >
-                  ← New generation
-                </button>
-              </>
-            )}
+          {/* Right: blueprint selection deck */}
+          {mode !== 'history' && !generationResult && <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
 
             {/* State 2: blueprint selection */}
-            {!generationResult && searchResults && (
+            {searchResults && (
               <>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
@@ -710,7 +717,7 @@ const Index = () => {
       </div>
 
       {/* Feature description */}
-      <div className="pointer-events-none absolute left-5 top-[72px] z-10 hidden max-w-sm rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl md:block">
+      <div className={`pointer-events-none absolute left-5 top-[72px] z-10 max-w-sm rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl ${generationResult ? 'hidden' : 'hidden md:block'}`}>
         <p className="text-[10px] uppercase tracking-[0.24em] text-sky-200/55">{meta.label}</p>
         <p className="mt-1 text-sm leading-5 text-white/72">{meta.description}</p>
       </div>
