@@ -34,7 +34,7 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
   },
   sound: {
     label: 'Sound Match',
-    description: 'Upload or record a reference clip. We\'ll identify its vibe, key, tempo, and texture — then find blueprints that match its feel.',
+    description: 'Record or upload a reference clip. We\'ll identify its vibe, key, tempo, and texture — then find blueprints that match its feel.',
   },
 };
 
@@ -476,7 +476,7 @@ const Index = () => {
                   <h2 className="mt-3 text-base font-semibold tracking-[-0.02em] text-white">Blueprint Inputs</h2>
                   <p className="mt-2 text-sm leading-6 text-white/62">
                     {mode === 'graph'
-                      ? 'Every selected node is added here. Find blueprints when ready.'
+                      ? 'Every selected bubble is added here. Find blueprints when ready.'
                       : 'Enter your query in the left panel, then find matching blueprints.'}
                   </p>
                 </div>
