@@ -24,7 +24,7 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
     description: 'Click a root node to expand its traits. Drill into sub-nodes to refine your sound, then find matching blueprints from the panel on the right.',
   },
   text: {
-    label: 'Free Text',
+    label: 'Text to Music',
     description: 'Describe anything — artist names, song titles, genres, moods, eras. We\'ll search the blueprint index for the closest matches and generate from there.',
   },
   lyrics: {
@@ -656,7 +656,7 @@ const Index = () => {
           }}
         >
           <p
-            className="text-[15px] font-bold leading-none tracking-wide"
+            className="text-[18px] font-bold leading-none tracking-wide"
             style={{ color: 'rgba(255,255,255,0.92)' }}
           >
             GrooveForge
