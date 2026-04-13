@@ -133,7 +133,7 @@ export default function Landing() {
           className="mb-4 text-sm uppercase tracking-[0.26em] font-semibold"
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
-          A MUSICIAN'S ULTIMATE ORIGINAL MUSIC GENERATION TOOLKIT
+          A MUSICIAN'S ULTIMATE AI-POWERED ORIGINAL MUSIC GENERATION TOOLKIT
         </motion.p>
 
         {/* Sub-tagline */}
