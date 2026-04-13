@@ -141,7 +141,7 @@ export default function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.7 }}
-          className="max-w-2xl mb-10 leading-relaxed"
+          className="mb-10 leading-relaxed whitespace-nowrap"
           style={{ fontSize: 'clamp(16px, 2.4vw, 22px)', color: 'rgba(255,255,255,0.62)' }}
         >
           Search through millions of arrangements and compositions and forge your grooves
