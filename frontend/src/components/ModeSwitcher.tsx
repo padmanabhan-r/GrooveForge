@@ -5,8 +5,8 @@ export type AppMode = 'graph' | 'text' | 'lyrics' | 'sound';
 const modes: { id: AppMode; label: string; icon: typeof Network }[] = [
   { id: 'graph',  label: 'Vibe Graph',   icon: Network        },
   { id: 'sound',  label: 'Sound Match',  icon: AudioWaveform  },
-  { id: 'text',   label: 'Free Text',    icon: MessageSquare  },
-  { id: 'lyrics', label: 'Lyrics',       icon: FileText       },
+  { id: 'text',   label: 'Text to Music', icon: MessageSquare },
+  { id: 'lyrics', label: 'Lyrics to Music', icon: FileText    },
 ];
 
 interface ModeSwitcherProps {
@@ -32,7 +32,7 @@ export default function ModeSwitcher({ active, onChange }: ModeSwitcherProps) {
           <button
             key={m.id}
             onClick={() => onChange(m.id)}
-            className="group relative flex min-w-[48px] items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-300"
+            className="group relative flex min-w-[64px] items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300"
             style={isActive ? {
               color: '#fff',
               transform: 'translateY(-1px)',
@@ -70,7 +70,7 @@ export default function ModeSwitcher({ active, onChange }: ModeSwitcherProps) {
                 }}
               />
             )}
-            <m.icon size={13} className="relative z-10" strokeWidth={isActive ? 2.5 : 2} />
+            <m.icon size={15} className="relative z-10" strokeWidth={isActive ? 2.5 : 2} />
             <span className="relative z-10 hidden sm:inline tracking-[0.01em]">{m.label}</span>
           </button>
         );
