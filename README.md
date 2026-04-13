@@ -11,6 +11,10 @@
 
 ---
 
+**Live:** [groove-forge.vercel.app](https://groove-forge.vercel.app) · API: [grooveforge-production.up.railway.app](https://grooveforge-production.up.railway.app/health)
+
+---
+
 GrooveForge is a **retrieval-augmented music creation system**. Users search by feeling, structure, lyrics, or artist neighborhood. The app retrieves the closest musical blueprints from a Turbopuffer vector index, aggregates their traits into a generation profile, and produces a fresh original track via ElevenLabs Music API.
 
 Every generated track comes with a visible **reasoning trail** — the blueprint cards that shaped it — so you can see *why* it sounds the way it does.
@@ -166,9 +170,10 @@ ModeTab: Graph | Text | Lyrics | Remix | Artist — always visible
 | Vector retrieval | Turbopuffer — 6 namespaces, ANN + BM25 hybrid, metadata filters |
 | LLM synthesis | Google Gemini (gemini-2.5-flash) — blueprint synthesis, composition plans, lyrics analysis |
 | Music generation | ElevenLabs Music API (prompt + composition-plan modes) |
-| Embeddings | `all-MiniLM-L6-v2` (384-dim, CPU) |
+| Embeddings | `all-MiniLM-L6-v2` via OpenRouter API (384-dim) |
 | Data sources | LP-MusicCaps-MSD (513K), MSD full (1M), FMA (106K), MusicCaps (5.5K) |
-| Deployment | Docker + GCP Cloud Run |
+| Embeddings | `all-MiniLM-L6-v2` via OpenRouter API (eliminates local OOM) |
+| Deployment | Railway (backend, Hobby tier) + Vercel (frontend) |
 
 ---
 
@@ -187,12 +192,14 @@ uv run uvicorn app.main:app --reload --port 8000
 cd frontend
 npm install
 npm run dev
+# Opens at http://localhost:8080
 ```
 
 **Environment variables** (`backend/.env`):
 ```
 ELEVENLABS_API_KEY=...
 TURBOPUFFER_API_KEY=...
+OPENROUTER_API_KEY=...
 GEMINI_API_KEY=...
 ```
 
