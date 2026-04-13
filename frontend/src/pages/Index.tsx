@@ -22,7 +22,7 @@ import {
 const MODE_META: Record<AppMode, { label: string; description: string }> = {
   graph: {
     label: 'Vibe Graph',
-    description: 'Click a root node to expand its traits. Drill into sub-nodes to refine your sound, then find matching blueprints from the panel on the right.',
+    description: 'Click a root bubble to expand its traits. Keep drilling down into nested bubbles to refine your sound, then discover matching blueprints from the panel on the right.',
   },
   text: {
     label: 'Text to Music',
