@@ -217,11 +217,20 @@ def aggregate_blueprints(blueprints: list[Blueprint]) -> AggregatedTraits:
 
     avg_energy = round(sum(b.energy for b in blueprints) / len(blueprints), 2)
 
+    _skip = {"unknown", "n/a", "none", ""}
     vocal_counter = Counter(
         b.vocal_type for b in blueprints
-        if b.vocal_type and b.vocal_type.lower() not in ("unknown", "n/a", "none")
+        if b.vocal_type and b.vocal_type.lower() not in _skip
+        and b.vocal_type.lower() != "instrumental"
     )
-    vocal_type = vocal_counter.most_common(1)[0][0] if vocal_counter else ""
+    if vocal_counter:
+        vocal_type = vocal_counter.most_common(1)[0][0]
+    else:
+        # All blueprints are instrumental — show that explicitly
+        instrumental_count = sum(
+            1 for b in blueprints if b.vocal_type.lower() == "instrumental"
+        )
+        vocal_type = "instrumental" if instrumental_count else ""
 
     return AggregatedTraits(
         avg_bpm=avg_bpm,

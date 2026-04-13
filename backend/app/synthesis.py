@@ -5,7 +5,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from app.config import settings
-from app.models import AggregatedTraits, Blueprint, LyricsAnalysis, SoundAnalysis
+from app.models import AggregatedTraits, Blueprint, DisplayTags, LyricsAnalysis, SoundAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,19 @@ def _get_client() -> genai.Client:
 # Structured output schemas
 # ---------------------------------------------------------------------------
 
+class _DisplayTagsSchema(BaseModel):
+    genre: str = ""
+    mood: str = ""
+    bpm: int = 0
+    key: str = ""
+    vocal_type: str = ""
+    energy_pct: int = 0  # 0–100
+
+
 class SimpleOutput(BaseModel):
     prompt: str
     negative_styles: list[str]
+    display_tags: _DisplayTagsSchema
 
 
 class SectionPlan(BaseModel):
@@ -50,6 +60,7 @@ class AdvancedOutput(BaseModel):
     positive_global_styles: list[str]
     negative_global_styles: list[str]
     sections: list[SectionPlan]
+    display_tags: _DisplayTagsSchema
 
 
 # ---------------------------------------------------------------------------
@@ -167,14 +178,14 @@ async def synthesize_simple(
     user_input: str,
     blueprints: list[Blueprint],
     music_length_ms: int,
-) -> tuple[str, list[str]]:
+) -> tuple[str, list[str], DisplayTags]:
     """Use Gemini to generate a rich text prompt grounded in retrieved blueprints.
 
-    Returns (prompt_text, negative_styles).
+    Returns (prompt_text, negative_styles, display_tags).
     """
     if not settings.gemini_api_key:
         logger.warning("No Gemini key — using fallback prompt")
-        return _fallback_prompt(user_input, blueprints), []
+        return _fallback_prompt(user_input, blueprints), [], DisplayTags()
 
     length_s = music_length_ms // 1000
     blueprint_ctx = _blueprint_context(blueprints)
@@ -191,9 +202,18 @@ async def synthesize_simple(
         "- NEVER mention any real artist names, band names, song titles, or album names. "
         "Describe sound attributes only (genre, instrumentation, mood, tempo, energy).\n"
         "- Keep the prompt under 150 words, vivid and concrete.\n"
-        f"- The track should be approximately {length_s} seconds long.\n\n"
-        "Respond with a JSON object matching the schema:\n"
-        '{ "prompt": "...", "negative_styles": ["...", ...] }'
+        f"- The track should be approximately {length_s} seconds long.\n"
+        "- VOCALS DEFAULT: Unless the user explicitly requests an instrumental track, the generated "
+        "track MUST include vocals. Choose a vocal type appropriate to the genre (e.g. 'female vocals', "
+        "'male vocals', 'rap vocals', 'soulful vocals') and include it in the prompt.\n\n"
+        "Also populate display_tags with exactly what you used in the prompt:\n"
+        "  genre: primary genre (e.g. 'hip-hop', 'synth-pop')\n"
+        "  mood: primary mood word (e.g. 'melancholic', 'energetic')\n"
+        "  bpm: integer BPM you targeted (0 if unspecified)\n"
+        "  key: musical key string (e.g. 'A minor') or '' if not specified\n"
+        "  vocal_type: vocal style you included (e.g. 'female vocals', 'rap vocals', 'instrumental')\n"
+        "  energy_pct: energy level 0–100 integer\n\n"
+        "Respond with a JSON object matching the SimpleOutput schema."
     )
 
     user_message = (
@@ -214,10 +234,18 @@ async def synthesize_simple(
             ),
         )
         parsed = SimpleOutput.model_validate_json(response.text or "{}")
-        return parsed.prompt, parsed.negative_styles
+        tags = DisplayTags(
+            genre=parsed.display_tags.genre,
+            mood=parsed.display_tags.mood,
+            bpm=parsed.display_tags.bpm,
+            key=parsed.display_tags.key,
+            vocal_type=parsed.display_tags.vocal_type,
+            energy_pct=parsed.display_tags.energy_pct,
+        )
+        return parsed.prompt, parsed.negative_styles, tags
     except Exception:
         logger.exception("Gemini synthesize_simple failed — using fallback")
-        return _fallback_prompt(user_input, blueprints), []
+        return _fallback_prompt(user_input, blueprints), [], DisplayTags()
 
 
 async def synthesize_advanced(
@@ -225,14 +253,14 @@ async def synthesize_advanced(
     blueprints: list[Blueprint],
     music_length_ms: int,
     lyrics: str = "",
-) -> dict:
+) -> tuple[dict, DisplayTags]:
     """Use Gemini to generate a structured composition plan for ElevenLabs.
 
-    Returns a snake_case dict ready for _plan_to_camel().
+    Returns (snake_case plan dict, display_tags).
     """
     if not settings.gemini_api_key:
         logger.warning("No Gemini key — using fallback composition plan")
-        return _fallback_plan(user_input, blueprints, music_length_ms, lyrics)
+        return _fallback_plan(user_input, blueprints, music_length_ms, lyrics), DisplayTags()
 
     length_s = music_length_ms // 1000
     blueprint_ctx = _blueprint_context(blueprints)
@@ -257,7 +285,17 @@ async def synthesize_advanced(
         "- Typical structure: intro ~10%, verse ~25%, chorus ~20%, bridge ~15%, outro ~10% "
         "(adjust based on the music style).\n"
         "- If lyrics are provided, they go ONLY into section `lines` — never into styles.\n"
-        "- If no lyrics, leave all `lines` arrays empty.\n\n"
+        "- If no lyrics, leave all `lines` arrays empty.\n"
+        "- VOCALS DEFAULT: Unless the user explicitly requests an instrumental track, the composition "
+        "plan MUST include vocals. Add an appropriate vocal style to positive_global_styles "
+        "(e.g. 'female lead vocals', 'rap vocals', 'soulful male vocals').\n\n"
+        "Also populate display_tags with exactly what you used in the plan:\n"
+        "  genre: primary genre (e.g. 'hip-hop', 'synth-pop')\n"
+        "  mood: primary mood word (e.g. 'melancholic', 'energetic')\n"
+        "  bpm: integer BPM you targeted (0 if unspecified)\n"
+        "  key: musical key string (e.g. 'A minor') or '' if not specified\n"
+        "  vocal_type: vocal style you included (e.g. 'female vocals', 'rap vocals', 'instrumental')\n"
+        "  energy_pct: energy level 0–100 integer\n\n"
         "Respond with a JSON object matching the AdvancedOutput schema."
     )
 
@@ -280,10 +318,18 @@ async def synthesize_advanced(
             ),
         )
         parsed = AdvancedOutput.model_validate_json(response.text or "{}")
-        return parsed.model_dump()
+        tags = DisplayTags(
+            genre=parsed.display_tags.genre,
+            mood=parsed.display_tags.mood,
+            bpm=parsed.display_tags.bpm,
+            key=parsed.display_tags.key,
+            vocal_type=parsed.display_tags.vocal_type,
+            energy_pct=parsed.display_tags.energy_pct,
+        )
+        return parsed.model_dump(), tags
     except Exception:
         logger.exception("Gemini synthesize_advanced failed — using fallback plan")
-        return _fallback_plan(user_input, blueprints, music_length_ms, lyrics)
+        return _fallback_plan(user_input, blueprints, music_length_ms, lyrics), DisplayTags()
 
 
 # ---------------------------------------------------------------------------

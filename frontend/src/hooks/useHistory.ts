@@ -64,9 +64,13 @@ export function useHistory() {
   }, [entries]);
 
   const addEntry = useCallback((result: GenerateResponse) => {
-    const genre = result.aggregated?.genre_cluster ?? '';
-    const mood  = result.aggregated?.mood_cluster ?? '';
-    const label = [genre, mood].filter(Boolean).join(' · ') || 'Generated Track';
+    const dt = result.display_tags;
+    const genre = dt?.genre || result.aggregated?.genre_cluster || '';
+    const mood  = dt?.mood  || result.aggregated?.mood_cluster  || '';
+    const bpm   = dt?.bpm   || (result.aggregated?.avg_bpm > 0 ? Math.round(result.aggregated.avg_bpm) : 0);
+    const parts = [genre, mood].filter(Boolean);
+    if (bpm > 0) parts.push(`${bpm} BPM`);
+    const label = parts.join(' · ') || 'Generated Track';
     const entry: HistoryEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: label,

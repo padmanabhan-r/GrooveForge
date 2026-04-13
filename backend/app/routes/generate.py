@@ -34,8 +34,9 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
     blueprints, aggregated = await _resolve_blueprints(request)
 
     composition_plan = None
+    display_tags = None
     if request.generation_mode == "advanced":
-        plan = await synthesize_advanced(
+        plan, display_tags = await synthesize_advanced(
             user_input=request.user_input,
             blueprints=blueprints,
             music_length_ms=request.music_length_ms,
@@ -43,7 +44,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         )
         audio_url, prompt_used, composition_plan = await generate_from_composition_plan(plan, aggregated)
     else:
-        prompt, _ = await synthesize_simple(
+        prompt, _, display_tags = await synthesize_simple(
             user_input=request.user_input,
             blueprints=blueprints,
             music_length_ms=request.music_length_ms,
@@ -62,6 +63,7 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         composition_plan=composition_plan,
         blueprints=blueprints,
         aggregated=aggregated,
+        display_tags=display_tags,
     )
 
 
@@ -75,7 +77,7 @@ async def preview(request: GenerateRequest) -> PreviewResponse:
     blueprints, _ = await _resolve_blueprints(request)
 
     if request.generation_mode == "advanced":
-        plan = await synthesize_advanced(
+        plan, _ = await synthesize_advanced(
             user_input=request.user_input,
             blueprints=blueprints,
             music_length_ms=request.music_length_ms,
@@ -84,7 +86,7 @@ async def preview(request: GenerateRequest) -> PreviewResponse:
         logger.info("Preview (advanced): %d sections", len(plan.get("sections", [])))
         return PreviewResponse(generation_mode="advanced", composition_plan=plan)
 
-    prompt, _ = await synthesize_simple(
+    prompt, _, __ = await synthesize_simple(
         user_input=request.user_input,
         blueprints=blueprints,
         music_length_ms=request.music_length_ms,

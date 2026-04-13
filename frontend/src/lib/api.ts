@@ -38,6 +38,15 @@ export interface AggregatedTraits {
   vocal_type: string;
 }
 
+export interface DisplayTags {
+  genre: string;
+  mood: string;
+  bpm: number;
+  key: string;
+  vocal_type: string;
+  energy_pct: number;
+}
+
 export interface SearchRequest {
   vibes: string[];
   free_text: string;
@@ -86,6 +95,7 @@ export interface GenerateResponse {
   composition_plan: CompositionPlan | null;
   blueprints: Blueprint[];
   aggregated: AggregatedTraits;
+  display_tags: DisplayTags | null;
 }
 
 export interface PreviewResponse {

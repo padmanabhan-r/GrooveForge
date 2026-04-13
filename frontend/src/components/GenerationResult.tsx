@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Play, Pause, Music, Download } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { CompositionPlan, GenerateResponse, resolveAudioUrl } from '@/lib/api';
+import { CompositionPlan, DisplayTags, GenerateResponse, resolveAudioUrl } from '@/lib/api';
 import BlueprintCard from './BlueprintCard';
 
 interface GenerationResultProps {
@@ -193,8 +193,21 @@ function MiniPlayer({ audioUrl, promptUsed, compositionPlan }: { audioUrl: strin
   );
 }
 
+function resolveDisplayTags(tags: DisplayTags | null, aggregated: GenerateResponse['aggregated']) {
+  const t = tags ?? {} as Partial<DisplayTags>;
+  return [
+    { label: 'BPM',    value: t.bpm && t.bpm > 0 ? String(t.bpm) : (aggregated.avg_bpm > 0 ? String(Math.round(aggregated.avg_bpm)) : '—') },
+    { label: 'Key',    value: t.key || aggregated.mode_key || '—' },
+    { label: 'Genre',  value: t.genre || aggregated.genre_cluster || '—' },
+    { label: 'Mood',   value: t.mood || aggregated.mood_cluster || '—' },
+    { label: 'Vocal',  value: t.vocal_type || '—' },
+    { label: 'Energy', value: t.energy_pct && t.energy_pct > 0 ? `${t.energy_pct}%` : (aggregated.energy > 0 ? `${Math.round(aggregated.energy * 100)}%` : '—') },
+  ];
+}
+
 export default function GenerationResult({ result }: GenerationResultProps) {
-  const { audio_url, prompt_used, composition_plan, blueprints, aggregated } = result;
+  const { audio_url, prompt_used, composition_plan, blueprints, aggregated, display_tags } = result;
+  const tags = resolveDisplayTags(display_tags, aggregated);
 
   return (
     <div className="flex flex-col gap-5 w-full">
@@ -204,24 +217,9 @@ export default function GenerationResult({ result }: GenerationResultProps) {
         <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Your Generated Track</h2>
       </div>
 
-      {/* Aggregated traits */}
+      {/* Display tags */}
       <div className="flex flex-wrap gap-3">
-        {[
-          { label: 'Avg BPM', value: Math.round(aggregated.avg_bpm).toString() },
-          { label: 'Key', value: aggregated.mode_key },
-          { label: 'Style', value: prompt_used.split(',')[0].trim() || aggregated.genre_cluster },
-          {
-            label: 'Vocal',
-            value: (() => {
-              if (aggregated.vocal_type) return aggregated.vocal_type;
-              const vocalTerm = prompt_used.split(',').map(s => s.trim()).find(s =>
-                /vocal|voice|singer|rap|choir|growl|spoken|instrumental/i.test(s)
-              );
-              return vocalTerm || '—';
-            })(),
-          },
-          { label: 'Energy', value: (aggregated.energy * 100).toFixed(0) + '%' },
-        ].map(({ label, value }) => (
+        {tags.map(({ label, value }) => (
           <div
             key={label}
             className="flex flex-col px-3 py-2 rounded-xl border border-white/8"

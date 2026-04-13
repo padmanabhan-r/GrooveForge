@@ -39,6 +39,15 @@ class AggregatedTraits(BaseModel):
     vocal_type: str
 
 
+class DisplayTags(BaseModel):
+    genre: str = ""
+    mood: str = ""
+    bpm: int = 0
+    key: str = ""
+    vocal_type: str = ""
+    energy_pct: int = 0  # 0–100
+
+
 class SearchRequest(BaseModel):
     vibes: list[str] = []
     bpm_lower: float | None = None
@@ -73,6 +82,7 @@ class GenerateResponse(BaseModel):
     composition_plan: dict | None = None
     blueprints: list[Blueprint]
     aggregated: AggregatedTraits
+    display_tags: DisplayTags | None = None
 
 
 class PreviewResponse(BaseModel):
