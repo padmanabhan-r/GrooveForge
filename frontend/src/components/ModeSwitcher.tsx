@@ -1,12 +1,13 @@
-import { Network, MessageSquare, FileText, AudioWaveform } from 'lucide-react';
+import { Network, MessageSquare, FileText, AudioWaveform, History } from 'lucide-react';
 
-export type AppMode = 'graph' | 'text' | 'lyrics' | 'sound';
+export type AppMode = 'graph' | 'text' | 'lyrics' | 'sound' | 'history';
 
 const modes: { id: AppMode; label: string; icon: typeof Network }[] = [
-  { id: 'graph',  label: 'Vibe Graph',   icon: Network        },
-  { id: 'sound',  label: 'Sound Match',  icon: AudioWaveform  },
-  { id: 'text',   label: 'Text to Music', icon: MessageSquare },
-  { id: 'lyrics', label: 'Lyrics to Music', icon: FileText    },
+  { id: 'graph',   label: 'Vibe Graph',        icon: Network       },
+  { id: 'sound',   label: 'Sound Match',        icon: AudioWaveform },
+  { id: 'text',    label: 'Text to Music',      icon: MessageSquare },
+  { id: 'lyrics',  label: 'Lyrics to Music',    icon: FileText      },
+  { id: 'history', label: 'Generated History',  icon: History       },
 ];
 
 interface ModeSwitcherProps {

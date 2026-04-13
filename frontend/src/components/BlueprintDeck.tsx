@@ -52,7 +52,7 @@ export function BlueprintDeck({
         <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
         <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
         <p className="mt-2 text-sm leading-6 text-white/62">
-          These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
+          Review these blueprints — they shape what gets generated. Remove any that don't match what you're going for. The closer the match, the better your track.
         </p>
       </div>
 

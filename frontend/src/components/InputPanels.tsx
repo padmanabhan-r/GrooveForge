@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AudioWaveform, Mic, Music, Sparkles, Square, X } from 'lucide-react';
+import { AudioWaveform, Mic, Music, Sparkles, Square } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AppMode } from './ModeSwitcher';
 
@@ -116,11 +116,6 @@ export default function InputPanels({
     setSoundDragActive(false);
     const file = e.dataTransfer.files[0];
     if (file) handleSoundFile(file);
-  }
-
-  function formatBytes(bytes: number): string {
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   if (mode === 'graph') return null;
@@ -319,21 +314,16 @@ export default function InputPanels({
               )}
             </div>
 
-            {/* Captured file strip */}
+            {/* Captured / ready state */}
             {audioFile && (
               <div
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                className="flex items-center justify-between gap-2 w-full px-4 py-3 rounded-xl"
+                style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)' }}
               >
-                <AudioWaveform size={14} className="text-indigo-400 flex-shrink-0" />
-                <span className="flex-1 truncate text-xs text-white/70">{audioFile.name}</span>
-                <span className="text-[10px] text-white/35 flex-shrink-0">{formatBytes(audioFile.size)}</span>
-                <button
-                  onClick={() => { onAudioFileChange(null); setRecordingState('idle'); }}
-                  className="flex-shrink-0 text-white/35 hover:text-white/70 transition-colors"
-                >
-                  <X size={13} />
-                </button>
+                <div className="flex items-center justify-center gap-2 w-full">
+                  <AudioWaveform size={14} className="text-emerald-400 flex-shrink-0" />
+                  <span className="text-xs text-emerald-300/90 font-medium">Audio captured — ready to find blueprints</span>
+                </div>
               </div>
             )}
 

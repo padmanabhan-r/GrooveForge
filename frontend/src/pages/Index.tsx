@@ -13,6 +13,9 @@ import ReviewModal from '@/components/ReviewModal';
 import { generateTrack, previewGeneration, searchBlueprints, analyzeLyrics, analyzeSound, GenerateResponse, SearchResponse, Blueprint, PreviewResponse, LyricsAnalysis, SoundAnalysis } from '@/lib/api';
 import LyricsAnalysisCard from '@/components/LyricsAnalysisCard';
 import SoundAnalysisCard from '@/components/SoundAnalysisCard';
+import GeneratingOverlay from '@/components/GeneratingOverlay';
+import HistoryPanel from '@/components/HistoryPanel';
+import { useHistory } from '@/hooks/useHistory';
 import { compileQuery, getNodeLabel } from '@/data/graphNodes';
 import {
   Dialog,
@@ -36,9 +39,14 @@ const MODE_META: Record<AppMode, { label: string; description: string }> = {
     label: 'Sound Match',
     description: 'Record or upload a reference clip. We\'ll identify its vibe, key, tempo, and texture — then find blueprints that match its feel.',
   },
+  history: {
+    label: 'Generated History',
+    description: 'All your generated tracks, saved locally. Replay, rename, or download any of them.',
+  },
 };
 
 const Index = () => {
+  const { entries: historyEntries, addEntry, renameEntry, removeEntry } = useHistory();
   const [mode, setMode] = useState<AppMode>('graph');
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [extraVibes, setExtraVibes] = useState<string[]>([]);
@@ -180,34 +188,38 @@ const Index = () => {
     }
 
     // Direct generation (review mode off)
+    setDeckPoppedOut(false);
     setIsGenerating(true);
     setError(null);
     try {
       const result = await generateTrack(payload);
       setGenerationResult(result);
+      addEntry(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
-  }, [_buildGeneratePayload, reviewMode]);
+  }, [_buildGeneratePayload, reviewMode, addEntry]);
 
   const handleConfirmGenerate = useCallback(async () => {
     const payload = pendingGenerate.current;
     if (!payload) return;
+    setDeckPoppedOut(false);
+    setPreviewData(null);
+    pendingGenerate.current = null;
     setIsGenerating(true);
     setError(null);
     try {
       const result = await generateTrack(payload);
-      setPreviewData(null);
-      pendingGenerate.current = null;
       setGenerationResult(result);
+      addEntry(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [setDeckPoppedOut, addEntry]);
 
   const handleReset = useCallback(() => {
     setSearchResults(null);
@@ -242,30 +254,45 @@ const Index = () => {
     <div className="h-screen bg-background relative overflow-hidden">
       <AnimatedBackground isPlaying={false} />
 
+      {/* Full-screen loading overlay */}
+      <AnimatePresence>
+        {(isSearching || isGenerating) && (
+          <GeneratingOverlay phase={isSearching ? 'searching' : 'generating'} />
+        )}
+      </AnimatePresence>
+
       {/* Main content grid */}
       <div className="absolute inset-x-4 top-20 bottom-4 z-0 sm:inset-x-6 sm:top-24 sm:bottom-6 lg:inset-x-8 lg:top-28 lg:bottom-8">
-        <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_352px]">
+        <div className={`grid h-full grid-cols-1 gap-4 ${mode !== 'history' ? 'xl:grid-cols-[minmax(0,1fr)_352px]' : ''}`}>
 
           {/* Left: main panel */}
           <div className="relative min-h-[420px]">
-            {mode === 'graph'
-              ? <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => { setSelectedNodes([]); setGraphResetKey(k => k + 1); }} resetKey={graphResetKey} />
-              : <InputPanels
-                  mode={mode}
-                  freeText={freeText}
-                  onFreeTextChange={setFreeText}
-                  lyrics={lyrics}
-                  onLyricsChange={setLyrics}
-                  audioFile={audioFile}
-                  onAudioFileChange={setAudioFile}
-                  onSearch={handleSearch}
-                  isSearching={isSearching}
-                />
-            }
+            {/* Keep VibeGraph mounted at all times to prevent spring re-animation on tab switch */}
+            <div style={{ display: mode === 'graph' ? 'block' : 'none' }} className="absolute inset-0">
+              <VibeGraph selectedNodes={selectedNodes} onToggleNode={toggleNode} onClearSelections={() => { setSelectedNodes([]); setGraphResetKey(k => k + 1); }} resetKey={graphResetKey} />
+            </div>
+            {mode === 'history' && (
+              <div className="absolute inset-0 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-6 overflow-y-auto shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <HistoryPanel entries={historyEntries} onRename={renameEntry} onRemove={removeEntry} />
+              </div>
+            )}
+            {mode !== 'graph' && mode !== 'history' && (
+              <InputPanels
+                mode={mode}
+                freeText={freeText}
+                onFreeTextChange={setFreeText}
+                lyrics={lyrics}
+                onLyricsChange={setLyrics}
+                audioFile={audioFile}
+                onAudioFileChange={setAudioFile}
+                onSearch={handleSearch}
+                isSearching={isSearching}
+              />
+            )}
           </div>
 
           {/* Right: selection deck / blueprint results / generation result */}
-          <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
+          {mode !== 'history' && <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
 
             {/* State 3: generation result */}
             {generationResult && (
@@ -630,7 +657,7 @@ const Index = () => {
                 )}
               </>
             )}
-          </aside>
+          </aside>}
         </div>
       </div>
 
@@ -712,6 +739,7 @@ const Index = () => {
             <div>
               <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
               <h2 className="text-lg font-semibold text-white">Pick Your Sound</h2>
+              <p className="mt-1 text-sm text-white/55">Remove blueprints that don't fit your vision — only the ones you keep will shape the track.</p>
             </div>
           </div>
 
