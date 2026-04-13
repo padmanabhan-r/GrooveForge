@@ -265,7 +265,7 @@ const Index = () => {
           </div>
 
           {/* Right: selection deck / blueprint results / generation result */}
-          <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
+          <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
 
             {/* State 3: generation result */}
             {generationResult && (
@@ -287,8 +287,8 @@ const Index = () => {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/55">Retrieved Blueprints</p>
-                    <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
-                    <p className="mt-2 text-sm leading-6 text-white/62">
+                    <h2 className="mt-2 text-base font-semibold tracking-[-0.02em] text-white">Pick Your Sound</h2>
+                    <p className="mt-1 text-sm leading-5 text-white/62">
                       These blueprints matched your vibe. Toggle any to include or exclude them, then generate your track.
                     </p>
                   </div>
@@ -327,7 +327,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <div className="mt-4 flex flex-col gap-2 flex-1">
+                <div className="mt-3 flex flex-col gap-1.5 flex-1">
                   {searchResults.blueprints.map((bp, i) => (
                     <BlueprintCard
                       key={bp.id}
@@ -340,7 +340,7 @@ const Index = () => {
                   ))}
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3">
+                <div className="mt-3 flex flex-col gap-2">
                   {/* Generation mode toggle */}
                   <div>
                     <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Generation Mode</p>
@@ -410,11 +410,11 @@ const Index = () => {
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-2 flex flex-col gap-1.5">
                   {/* Review mode toggle */}
                   <button
                     onClick={() => setReviewMode(v => !v)}
-                    className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl transition-all"
+                    className="flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all"
                     style={{
                       background: reviewMode ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
                       border: reviewMode ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(255,255,255,0.08)',
@@ -445,7 +445,7 @@ const Index = () => {
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || isPreviewing || selectedBlueprints.length === 0}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: 'rgba(255,255,255,0.08)',
                       border: '1px solid rgba(255,255,255,0.18)',
@@ -596,7 +596,7 @@ const Index = () => {
                     <button
                       onClick={handleSearch}
                       disabled={isSearching || (selectedNodes.length === 0 && extraVibes.length === 0)}
-                      className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-semibold text-sm text-white transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
                         background: 'rgba(255,255,255,0.08)',
                         border: '1px solid rgba(255,255,255,0.18)',
