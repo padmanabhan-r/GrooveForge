@@ -63,11 +63,11 @@ Every generated track comes with a visible **reasoning trail** — the exact blu
 
 **1. Describe your vibe** — Select nodes in the graph, type a natural-language description, paste original lyrics, or just play a song you love and let GrooveForge extract the vibe.
 
-**2. Retrieve blueprints** — Your input is embedded with `all-MiniLM-L6-v2` and sent as a hybrid ANN + BM25 query to Turbopuffer across two namespaces simultaneously (`lp_msd_minilm` + `fma_minilm`, 620K+ tracks total). Both namespaces are queried concurrently via `asyncio.gather`, and all four ranked result lists (ANN + BM25 per namespace) are merged using **Reciprocal Rank Fusion (RRF, k=60)** to produce a unified, deduplicated ranking of the closest 5–10 blueprints.
+**2. Retrieve blueprints** — Your input is searched across 620K+ indexed tracks to find the closest musical matches by feel, genre, mood, key, tempo, and instrumentation. The top 5–10 blueprints are surfaced and ranked.
 
-**3. Aggregate traits** — Blueprint metadata is collapsed into a generation profile: average BPM, dominant key/mode, most-frequent genre and mood clusters, merged instrumentation list.
+**3. Aggregate traits** — The retrieved blueprints are collapsed into a generation profile: average BPM, dominant key and mode, most common genre and mood, merged instrumentation.
 
-**4. Generate your track** — Gemini synthesizes a grounded text prompt (simple mode) or structured composition plan (advanced mode) strictly from the retrieved blueprint traits — no hallucinated characteristics. ElevenLabs Music API produces the audio. Lyrics are placed only in ElevenLabs `lines` fields per section, never mixed into style guidance.
+**4. Generate your track** — Gemini synthesizes a music prompt strictly from the retrieved blueprint traits and sends it to ElevenLabs Music API to produce an original composition. In Advanced mode, lyrics are placed section by section — never mixed into style guidance.
 
 Every track includes a visible **reasoning trail** — the exact blueprint cards and aggregated profile that drove the generation.
 
@@ -86,7 +86,7 @@ Click genre, mood, tempo, key, mode, instrumentation, and theme nodes to compose
 
 ### Text-to-Music
 
-Type anything: `"moody synthwave, 110 BPM, instrumental"` or `"upbeat pop, female vocals, summer road trip"`. Your description is embedded with `all-MiniLM-L6-v2` and searched with hybrid ANN + BM25 retrieval across both namespaces simultaneously.
+Type anything: `"moody synthwave, 110 BPM, instrumental"` or `"upbeat pop, female vocals, summer road trip"`. Your description is embedded and searched across 620K+ indexed tracks to find the closest blueprint matches.
 
 <!-- Screenshot: Free-Text Search mode — replace with actual screenshot -->
 <p align="center">
