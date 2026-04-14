@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Play, Pause, Download, /* Trash2, */ Pencil, Check, X, Clock, Music2 } from 'lucide-react';
+import { Play, Pause, Download, Trash2, Pencil, Check, X, Clock, Music2 } from 'lucide-react';
 import { HistoryEntry } from '@/hooks/useHistory';
 import { resolveAudioUrl } from '@/lib/api';
 
@@ -135,14 +135,12 @@ function HistoryTrack({
           >
             <Download size={14} />
           </a>
-          {/* Delete button hidden for demo — preserve all generated tracks
           <button
             onClick={() => onRemove(entry.id)}
             className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-400/8 transition-all"
           >
             <Trash2 size={14} />
           </button>
-          */}
         </div>
       </div>
 

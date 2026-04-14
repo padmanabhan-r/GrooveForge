@@ -11,9 +11,11 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 
-> Music discovery is broken. Song titles tell you nothing about feel. Artist names lock you into what you already know. Playlists are curated by someone else's taste.
+> Every musician has a tune in mind.
 >
-> GrooveForge starts where every other tool stops: with the **vibe itself**. Pick a mood, a genre, a tempo, a key — and get a completely original track built from the closest musical blueprints ever indexed.
+> What if you could search and create music by feel, generate songs by vibe, play a melody to create music Shazam-style, fuse genres into entirely new sounds, and transform lyrics into fully composed songs?
+>
+> Meet GrooveForge — **THE ULTIMATE AI TOOLKIT FOR ORIGINAL MUSIC CREATION.**
 
 <!-- Screenshot: Full app hero — replace with actual screenshot -->
 <p align="center">
@@ -28,6 +30,7 @@
 - [How It Works](#how-it-works)
 - [Input Modes](#input-modes)
 - [Architecture](ARCHITECTURE.md)
+- [Datasets](#datasets)
 - [Data Pipeline](#data-pipeline)
 - [Blueprint Schema](#blueprint-schema)
 - [Generation Modes](#generation-modes)
@@ -35,7 +38,7 @@
 - [Screenshots](#screenshots)
 - [Running Locally](#running-locally)
 - [Demo Vibes](#demo-vibes)
-- [Data & Legal](#data--legal)
+- [Copyright-Safe by Design](#copyright-safe-by-design)
 
 ---
 
@@ -125,6 +128,21 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram and endpoint 
 
 ---
 
+## Datasets
+
+GrooveForge's blueprint index is built on four open datasets, combined into ~620K indexed tracks. Only structured metadata and derived features are used — no audio files are stored or processed.
+
+| Dataset | Size | What it contributes |
+|---------|------|---------------------|
+| **Million Song Dataset (MSD)** | ~1M tracks | The backbone. Provides BPM, key, mode, loudness, artist familiarity, and release year for a million songs. Loaded from `track_metadata.db` (SQLite) and `msd_summary_file.h5` (HDF5 audio features), merged on track ID into PostgreSQL. |
+| **LP-MusicCaps-MSD** | ~513K tracks | MSD tracks enriched with human-written captions from the MusicCaps annotation project. The `caption_summary` and `caption_writing` fields provide rich natural-language descriptions of mood, texture, instrumentation, and genre — the primary retrieval anchor for each blueprint's `text_description`. |
+| **Free Music Archive (FMA)** | ~106K tracks | Creative Commons licensed tracks with genre labels, Echonest audio features (valence, energy, danceability, instrumentalness, acousticness), and track-level metadata. Covers a wide range of independent and niche genres not well represented in MSD. |
+| **MusicCaps** | ~5.5K tracks | A high-quality, human-annotated evaluation set from Google DeepMind. Used to validate caption quality and tag vocabulary — not a primary source of indexed blueprints, but instrumental in shaping the genre/mood classification vocabulary. |
+
+Together these datasets cover mainstream, indie, electronic, classical, world music, and everything in between — giving retrieval broad coverage across moods, genres, keys, and tempos.
+
+---
+
 ## Data Pipeline
 
 The blueprint index was built in three offline stages. All scripts live in `backend/scripts/`.
@@ -144,7 +162,7 @@ h5py.File   → msd_summary_file.h5 (audio features)
              → merged on track_id → PostgreSQL msd_songs table
 ```
 
-Views `lp_musiccaps_msd_v` and `fma_all_v` sit above the raw MSD/FMA tables in PostgreSQL, exposing structured columns used directly by the ingest scripts.
+**Why PostgreSQL?** The raw MSD data arrives as SQLite + HDF5 files and FMA as loose CSVs — each in its own shape, with different column names, missing values, and inconsistent encodings. PostgreSQL became the central staging area where all sources land together, letting us explore and understand the data with SQL: check coverage of BPM vs key vs mood fields, identify null/out-of-range values, normalize genre vocabularies, join MusicCaps captions onto MSD tracks, and incrementally clean up rows. Only once the data was well-understood and shaped correctly were the final views (`lp_musiccaps_msd_v`, `fma_all_v`) defined — these sit above the raw tables and expose the exact structured columns used by the ingest scripts downstream. PostgreSQL was the right choice for data preparation; Turbopuffer handles the production retrieval load.
 
 ### Stage 2 — PostgreSQL views → Blueprint Parquets
 
@@ -174,7 +192,9 @@ embed_blueprints.py
 ```
 
 - Embedding model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim, L2-normalized)
-- Batch encode: 256 rows per encode call; upsert 500 rows per Turbopuffer write call
+  - **During data pipeline (local):** The model was run locally via the `sentence-transformers` Python package — no GPU required. `all-MiniLM-L6-v2` is small enough to encode comfortably on CPU, producing ~1,000 vectors/sec and making it practical to embed all 620K+ blueprint records in a single offline run. Running it locally meant zero API cost for the bulk embedding pass and no rate-limit concerns.
+  - **At inference (OpenRouter):** For query embedding at request time, we switched to the same model served via the [OpenRouter API](https://openrouter.ai). This avoids bundling the model weights in the Railway server container, keeps the deployment lightweight, and centralizes access with a single API key. The vectors are dimensionally identical (384-dim, L2-normalized), so ANN queries work seamlessly against the locally-built index.
+  - Batch encode: 256 rows per encode call; upsert 500 rows per Turbopuffer write call
 - Schema: `text` (full-text search enabled), plus filterable string attributes (source, genre, mood, vocal_type, key, mode, mode_key) and numeric attributes (bpm, year, energy, acousticness, valence, danceability, instrumentalness, artist_familiarity)
 - Checkpointed: progress saved to `data/.embed_checkpoints/` so a killed run resumes from the last successful batch
 
@@ -306,13 +326,17 @@ uv run python scripts/embed_blueprints.py    # embed + upsert into Turbopuffer
 
 ---
 
-## Data & Legal
+## Copyright-Safe by Design
 
-**Sources:** Million Song Dataset, Free Music Archive (FMA), MusicCaps, LP-MusicCaps-MSD — metadata and derived features only.
+GrooveForge is built from the ground up to ensure no copyrighted material ever reaches ElevenLabs. This is a deliberate, multi-layer design — not an afterthought.
 
-**No audio files are processed, stored, or used.** Only structured features (BPM, key, genre, energy) and descriptive text (mood, themes, instrumentation captions) are indexed.
+**Metadata only, no audio.** The blueprint index is built entirely from structured features (BPM, key, mode, genre, energy, danceability) and human-written captions. No audio files are downloaded, stored, processed, or used at any stage. Sources — Million Song Dataset, Free Music Archive, MusicCaps, LP-MusicCaps-MSD — are used for their derived metadata only.
 
-**Generated music** is original output from ElevenLabs Music API — not a copy or derivative of any indexed track. Artist names from retrieval results are never passed to the generator.
+**Artist and title firewall.** Even though retrieved blueprints carry artist names and track titles, these are stripped before anything is sent to Gemini or ElevenLabs. Only derived, non-attributable traits (genre, BPM, key, mood, instrumentation, energy level) flow into the generation prompt. There is no path by which a real artist name or song title can influence the output.
+
+**`text_description` excluded from LLM context.** The free-text description field in each blueprint is used for retrieval only (BM25 full-text search). It is never passed to Gemini as prompt context — because free-text fields may embed real artist or track references. Only structured numeric and categorical attributes are used when synthesizing the generation prompt.
+
+**Generated music is original.** The output is a brand-new composition from ElevenLabs Music API — not a copy, sample, or derivative of any indexed track. Blueprint retrieval shapes the *style* of the prompt; it does not reproduce any source material.
 
 ---
 
