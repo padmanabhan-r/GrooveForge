@@ -1,22 +1,53 @@
-Creative Commons Attribution 4.0 International (CC BY 4.0)
+                                 Apache License
+                           Version 2.0, January 2004
+                        https://www.apache.org/licenses/
 
-Copyright (c) 2026 Padmanabhan
+   TERMS AND CONDITIONS
 
-You are free to:
+   1. Definitions.
 
-  Share — copy and redistribute the material in any medium or format
-  Adapt — remix, transform, and build upon the material for any purpose,
-           even commercially
+   2. Grant of Copyright License.
 
-Under the following terms:
+   3. Grant of Patent License.
 
-  Attribution — You must give appropriate credit, provide a link to the
-                license, and indicate if changes were made. You may do so
-                in any reasonable manner, but not in any way that suggests
-                the licensor endorses you or your use.
+   4. Redistribution.
 
-  No additional restrictions — You may not apply legal terms or
-                               technological measures that legally restrict
-                               others from doing anything the license permits.
+   5. Submission of Contributions.
 
-Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+   6. Trademarks.
+
+   7. Disclaimer of Warranty.
+
+   8. Limitation of Liability.
+
+   9. Additional Terms.
+
+      "Commercial use" includes any use for commercial benefit or by a
+      commercial entity, such as selling access to the Software,
+      incorporating the Software into a product or service offered for
+      sale, or using the Software to provide fee-based services.
+      Notwithstanding the foregoing, Commercial use requiring prior
+      written permission from the Copyright Holder is permitted,
+      provided that such permission is obtained in writing before
+      the Commercial use commences.
+
+   10. License to use the Software does not grant permission to use
+       trademarks or names except as required for reasonable and
+       customary use in describing the origin of the Software.
+
+   11. This License does not grant permission to use the trade names,
+       trademarks, service marks, or product names of the Licensor,
+       except as required for reasonable and customary use in
+       describing the origin of the Software.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       https://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
