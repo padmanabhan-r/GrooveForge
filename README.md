@@ -28,12 +28,12 @@
 - [How It Works](#how-it-works)
 - [Input Modes](#input-modes)
 - [Architecture](#architecture)
+- [Data Pipeline](#data-pipeline)
 - [Blueprint Schema](#blueprint-schema)
 - [Generation Modes](#generation-modes)
 - [Tech Stack](#tech-stack)
 - [Screenshots](#screenshots)
 - [Running Locally](#running-locally)
-- [API Reference](#api-reference)
 - [Demo Vibes](#demo-vibes)
 - [Data & Legal](#data--legal)
 
@@ -41,9 +41,16 @@
 
 ## What is GrooveForge?
 
-GrooveForge is a **retrieval-augmented music creation system**. Instead of describing music in the abstract, you search by the actual structural properties that make music sound the way it does — key, tempo, energy, mood, instrumentation, lyrical themes.
+GrooveForge is a **retrieval-augmented music creation system** — THE ULTIMATE AI TOOLKIT FOR ORIGINAL MUSIC CREATION.
 
-The backend retrieves the closest **musical blueprints** from a Turbopuffer vector index (620K+ tracks from LP-MusicCaps-MSD and FMA), aggregates their traits into a generation profile, and passes that grounded profile to ElevenLabs Music API to produce a fresh original track.
+Instead of describing music in the abstract, you search by the actual structural properties that make music sound the way it does — key, tempo, mood, instrumentation, lyrical themes. GrooveForge gives you four powerful ways to create:
+
+- **Vibe Graph** — Click genre, mood, tempo, key, and theme nodes to compose a vibe
+- **Sound Match** — Upload or record a reference clip; Gemini analyzes it and finds matching blueprints Shazam-style
+- **Text-to-Music** — Describe what you want to create using natural language
+- **Lyrics-to-Music** — Transform written lyrics into a fully composed song
+
+At its core, GrooveForge indexes **millions of audio blueprints** enriched with features that define a song's DNA: genre, mood, key, tempo, energy, danceability, acousticness, valence, instrumentalness, and vocal characteristics. By retrieving and analyzing the closest matches, it generates original compositions grounded in real musical structure — ensuring precision, originality, and creative control.
 
 Every generated track comes with a visible **reasoning trail** — the exact blueprint cards that shaped it — so you can see *why* it sounds the way it does. No black boxes. No hallucinated characteristics.
 
@@ -51,11 +58,15 @@ Every generated track comes with a visible **reasoning trail** — the exact blu
 
 ## How It Works
 
-**1. Pick a vibe** — Select nodes in the graph, type a description, paste lyrics, or record a sound clip.
+**1. Describe your vibe** — Select nodes in the graph, type a natural-language description, paste original lyrics, or record a reference clip.
 
-**2. Retrieve blueprints** — Turbopuffer runs a hybrid ANN + BM25 search across 620K+ indexed tracks. The closest 5–10 musical blueprints surface with their metadata.
+**2. Retrieve blueprints** — Your input is embedded with `all-MiniLM-L6-v2` and sent as a hybrid ANN + BM25 query to Turbopuffer across two namespaces simultaneously (`lp_msd_minilm` + `fma_minilm`, 620K+ tracks total). Both namespaces are queried concurrently via `asyncio.gather`, and all four ranked result lists (ANN + BM25 per namespace) are merged using **Reciprocal Rank Fusion (RRF, k=60)** to produce a unified, deduplicated ranking of the closest 5–10 blueprints.
 
-**3. Generate your track** — Blueprint traits are aggregated (avg BPM, dominant key/mode, genre cluster, mood cluster). Gemini synthesizes a grounded prompt or structured composition plan. ElevenLabs produces the audio.
+**3. Aggregate traits** — Blueprint metadata is collapsed into a generation profile: average BPM, dominant key/mode, most-frequent genre and mood clusters, merged instrumentation list.
+
+**4. Generate your track** — Gemini synthesizes a grounded text prompt (simple mode) or structured composition plan (advanced mode) strictly from the retrieved blueprint traits — no hallucinated characteristics. ElevenLabs Music API produces the audio. Lyrics are placed only in ElevenLabs `lines` fields per section, never mixed into style guidance.
+
+Every track includes a visible **reasoning trail** — the exact blueprint cards and aggregated profile that drove the generation.
 
 ---
 
@@ -70,7 +81,7 @@ Click genre, mood, tempo, key, mode, instrumentation, and theme nodes to compose
   <img src="images/1-vibe-graph.png" alt="Vibe Graph — interactive node selection" width="700" />
 </p>
 
-### Free-Text Search
+### Text-to-Music
 
 Type anything: `"moody synthwave, 110 BPM, instrumental"` or `"upbeat pop, female vocals, summer road trip"`. Your description is embedded with `all-MiniLM-L6-v2` and searched with hybrid ANN + BM25 retrieval across both namespaces simultaneously.
 
@@ -160,6 +171,63 @@ LLM: Google Gemini 2.5-flash (google-genai SDK)
   analyze_lyrics       → mood / themes / energy / genres / vocal_style / search_query
   analyze_sound        → BPM / key / mood / texture / instrumentation from audio
 ```
+
+---
+
+## Data Pipeline
+
+The blueprint index was built in three offline stages. All scripts live in `backend/scripts/`.
+
+### Stage 1 — Raw data → PostgreSQL
+
+```
+load_msd_full.py
+  MSD SQLite (track_metadata.db, 1M tracks)          → msd_songs table
+       + HDF5 (msd_summary_file.h5, tempo/key/mode/loudness)
+```
+
+```python
+# backend/scripts/load_msd_full.py
+sqlite_conn → track_metadata.db (1M rows, basic metadata)
+h5py.File   → msd_summary_file.h5 (audio features)
+             → merged on track_id → PostgreSQL msd_songs table
+```
+
+Views `lp_musiccaps_msd_v` and `fma_all_v` sit above the raw MSD/FMA tables in PostgreSQL, exposing structured columns used directly by the ingest scripts.
+
+### Stage 2 — PostgreSQL views → Blueprint Parquets
+
+```
+ingest_blueprints.py
+  lp_musiccaps_msd_v (513,977 rows)  → data/blueprints_lp_msd.parquet
+  fma_all_v          (106,574 rows)  → data/blueprints_fma.parquet
+```
+
+For `lp_musiccaps_msd_v`:
+- Tags parsed and classified into genre / mood / themes via vocabulary sets
+- Vocal type inferred from tag strings (`female vocal`, `male vocal`, `instrumental`)
+- Energy derived from loudness: `(loudness + 25) / 25`, clamped to `[0, 1]`
+- `text` field assembled from `caption_summary` + `caption_writing` + tags + key/mode/BPM + artist name
+
+For `fma_all_v`:
+- Genre from `genre_top`; mood derived from echonest valence threshold (>0.6 → upbeat, <0.3 → melancholic)
+- Vocal type from instrumentalness threshold (>0.8 → instrumental)
+- `text` field assembled from title + genre + descriptors + BPM + mood
+
+### Stage 3 — Parquets → Turbopuffer
+
+```
+embed_blueprints.py
+  blueprints_lp_msd.parquet  → Turbopuffer namespace lp_msd_minilm  (513,977 records)
+  blueprints_fma.parquet     → Turbopuffer namespace fma_minilm     (106,574 records)
+```
+
+- Embedding model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim, L2-normalized)
+- Batch encode: 256 rows per encode call; upsert 500 rows per Turbopuffer write call
+- Schema: `text` (full-text search enabled), plus filterable string attributes (source, genre, mood, vocal_type, key, mode, mode_key) and numeric attributes (bpm, year, energy, acousticness, valence, danceability, instrumentalness, artist_familiarity)
+- Checkpointed: progress saved to `data/.embed_checkpoints/` so a killed run resumes from the last successful batch
+
+Both namespaces are queried concurrently at runtime via `asyncio.gather`. Results are merged with **Reciprocal Rank Fusion (RRF, k=60)**.
 
 ---
 
@@ -272,94 +340,6 @@ uv run python scripts/embed_blueprints.py    # embed + upsert into Turbopuffer
 ```
 
 > The Turbopuffer namespaces (`lp_msd_minilm`, `fma_minilm`) are already populated in production. You only need to run the data pipeline if you're rebuilding the index from scratch.
-
----
-
-## API Reference
-
-```
-POST /api/search
-Body:
-{
-  "vibes": ["moody", "synthwave"],
-  "free_text": "instrumental, city night",
-  "bpm_lower": 100,
-  "bpm_upper": 130,
-  "key": "C minor",
-  "vocal_type": "instrumental",
-  "top_k": 8
-}
-Response:
-{
-  "blueprints": [...],
-  "aggregated": {
-    "avg_bpm": 118,
-    "mode_key": "C minor",
-    "genre_cluster": "synthwave",
-    "mood_cluster": "moody",
-    "energy": 0.75,
-    "vocal_type": "instrumental"
-  }
-}
-
-POST /api/generate
-Body:
-{
-  "blueprints": [...],
-  "vibes": ["moody", "synthwave"],
-  "free_text": "",
-  "lyrics": "",              // songwriter mode — goes into ElevenLabs lines only
-  "user_input": "moody synthwave",
-  "generation_mode": "simple",   // "simple" | "advanced"
-  "music_length_ms": 90000
-}
-Response:
-{
-  "audio_url": "/static/audio/abc123.mp3",
-  "prompt_used": "Moody synthwave instrumental, 118 BPM, C minor...",
-  "composition_plan": null,      // populated in advanced mode
-  "blueprints": [...],
-  "aggregated": { "avg_bpm": 118, "mode_key": "C minor", ... }
-}
-
-POST /api/preview
-// Same body as /api/generate — returns synthesized prompt/plan without calling ElevenLabs
-Response: { "generation_mode": "simple", "prompt_used": "...", "composition_plan": null }
-
-POST /api/analyze-lyrics
-Body: { "lyrics": "In the city lights at 2am..." }
-Response:
-{
-  "analysis": {
-    "mood": ["melancholic", "atmospheric"],
-    "themes": ["city", "night", "loneliness"],
-    "energy": 0.45,
-    "suggested_genres": ["synthwave", "dream pop"],
-    "vocal_style": "breathy, introspective",
-    "search_query": "melancholic atmospheric city night synthwave"
-  },
-  "blueprints": [...],
-  "aggregated": { "avg_bpm": 112, "mode_key": "A minor", ... }
-}
-
-POST /api/analyze-sound
-Body: multipart/form-data  { "file": <audio file> }
-Response:
-{
-  "analysis": {
-    "bpm": 118,
-    "key": "C minor",
-    "mood": ["dark", "driving"],
-    "texture": ["synth pads", "drum machine"],
-    "search_query": "dark driving C minor synthwave 118 BPM"
-  },
-  "blueprints": [...],
-  "aggregated": { ... }
-}
-
-GET /api/health
-Response: { "status": "ok" }
-```
 
 ---
 
