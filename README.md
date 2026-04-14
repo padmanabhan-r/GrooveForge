@@ -49,7 +49,7 @@ GrooveForge is a **retrieval-augmented music creation system** — THE ULTIMATE 
 Instead of describing music in the abstract, you search by the actual structural properties that make music sound the way it does — key, tempo, mood, instrumentation, lyrical themes. GrooveForge gives you four powerful ways to create:
 
 - **Vibe Graph** — Click genre, mood, tempo, key, and theme nodes to compose a vibe
-- **Sound Match** — Upload or record a reference clip; Gemini analyzes it and finds matching blueprints Shazam-style
+- **Sound Match** — Play a song, name an artist, drop a title, or hum a melody. GrooveForge extracts the sonic fingerprint and generates something completely original in the same feel — Shazam, but for creation
 - **Text-to-Music** — Describe what you want to create using natural language
 - **Lyrics-to-Music** — Transform written lyrics into a fully composed song
 
@@ -61,7 +61,7 @@ Every generated track comes with a visible **reasoning trail** — the exact blu
 
 ## How It Works
 
-**1. Describe your vibe** — Select nodes in the graph, type a natural-language description, paste original lyrics, or record a reference clip.
+**1. Describe your vibe** — Select nodes in the graph, type a natural-language description, paste original lyrics, or just play a song you love and let GrooveForge extract the vibe.
 
 **2. Retrieve blueprints** — Your input is embedded with `all-MiniLM-L6-v2` and sent as a hybrid ANN + BM25 query to Turbopuffer across two namespaces simultaneously (`lp_msd_minilm` + `fma_minilm`, 620K+ tracks total). Both namespaces are queried concurrently via `asyncio.gather`, and all four ranked result lists (ANN + BM25 per namespace) are merged using **Reciprocal Rank Fusion (RRF, k=60)** to produce a unified, deduplicated ranking of the closest 5–10 blueprints.
 
@@ -104,11 +104,11 @@ Paste original lyrics. Gemini analyzes emotional tone, themes, energy level, and
 
 ### Sound Match
 
-Record a reference clip or upload an audio file. Gemini analyzes the audio for BPM, key, mood, texture, and instrumentation signals. Those derived traits drive blueprint retrieval — no audio file is ever stored or processed beyond the analysis step.
+Just hit play on any song you love — or hum a melody, name an artist, drop a song title, or record whatever's in your head. Gemini extracts the sonic fingerprint: BPM, key, mode, mood, texture, instrumentation. Those traits drive blueprint retrieval across 620K+ tracks, and GrooveForge generates something completely original in the same vibe. The artist name and song title never reach ElevenLabs — only the derived feel does.
 
 <!-- Screenshot: Sound Match mode — replace with actual screenshot -->
 <p align="center">
-  <img src="images/4-sound-match.png" alt="Sound Match — hum it, find it" width="700" />
+  <img src="images/4-sound-match.png" alt="Sound Match — play any song, get an original track in the same vibe" width="700" />
 </p>
 
 ### Generated History
