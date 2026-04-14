@@ -63,7 +63,7 @@ Every generated track comes with a visible **reasoning trail** — the exact blu
 
 **1. Describe your vibe** — Select nodes in the graph, type a natural-language description, paste original lyrics, or just play a song you love and let GrooveForge extract the vibe.
 
-**2. Retrieve blueprints** — Your input is searched across 620K+ indexed tracks to find the closest musical matches by feel, genre, mood, key, tempo, and instrumentation. The top 5–10 blueprints are surfaced and ranked.
+**2. Retrieve blueprints** — Your input is searched across millions of indexed tracks to find the closest musical matches by feel, genre, mood, key, tempo, and instrumentation. The top 5–10 blueprints are surfaced and ranked.
 
 **3. Aggregate traits** — The retrieved blueprints are collapsed into a generation profile: average BPM, dominant key and mode, most common genre and mood, merged instrumentation.
 
@@ -86,7 +86,7 @@ Click genre, mood, tempo, key, mode, instrumentation, and theme nodes to compose
 
 ### Text-to-Music
 
-Type anything: `"moody synthwave, 110 BPM, instrumental"` or `"upbeat pop, female vocals, summer road trip"`. Your description is embedded and searched across 620K+ indexed tracks to find the closest blueprint matches.
+Type anything: `"moody synthwave, 110 BPM, instrumental"` or `"upbeat pop, female vocals, summer road trip"`. Your description is embedded and searched across millions of indexed tracks to find the closest blueprint matches.
 
 <!-- Screenshot: Free-Text Search mode — replace with actual screenshot -->
 <p align="center">
@@ -104,7 +104,7 @@ Paste original lyrics. Gemini analyzes emotional tone, themes, energy level, and
 
 ### Sound Match
 
-Just hit play on any song you love — or hum a melody, name an artist, drop a song title, or record whatever's in your head. Gemini extracts the sonic fingerprint: BPM, key, mode, mood, texture, instrumentation. Those traits drive blueprint retrieval across 620K+ tracks, and GrooveForge generates something completely original in the same vibe. The artist name and song title never reach ElevenLabs — only the derived feel does.
+Just hit play on any song you love — or hum a melody, name an artist, drop a song title, or record whatever's in your head. Gemini extracts the sonic fingerprint: BPM, key, mode, mood, texture, instrumentation. Those traits drive blueprint retrieval across millions of tracks, and GrooveForge generates something completely original in the same vibe. The artist name and song title never reach ElevenLabs — only the derived feel does.
 
 <!-- Screenshot: Sound Match mode — replace with actual screenshot -->
 <p align="center">
