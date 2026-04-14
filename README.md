@@ -2,14 +2,14 @@
 
 **Search by vibe. Generate by blueprint.**
 
-[![Live App](https://img.shields.io/badge/Live%20App-groove--forge.vercel.app-brightgreen?style=flat&logo=googlechrome&logoColor=white)](https://groove-forge.vercel.app)
-[![API](https://img.shields.io/badge/API-Railway-0B0D0E?style=flat&logo=railway&logoColor=white)](https://grooveforge-production.up.railway.app/health)
-[![ElevenLabs](https://img.shields.io/badge/ElevenLabs%20Music%20API-FF6B35?style=flat&logoColor=white)](https://elevenlabs.io)
-[![Turbopuffer](https://img.shields.io/badge/Turbopuffer-Vector%20DB-7C3AED?style=flat&logoColor=white)](https://turbopuffer.com)
-[![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash-4285F4?style=flat&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
-[![ElevenHacks](https://img.shields.io/badge/Built%20for-ElevenHacks-FF6B35?style=flat&logoColor=white)](https://elevenlabs.io)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Live App](https://img.shields.io/badge/Live%20App-groove--forge.vercel.app-brightgreen?style=flat-square&logo=googlechrome&logoColor=white)](https://groove-forge.vercel.app)
+[![API](https://img.shields.io/badge/API-Railway-0B0D0E?style=flat-square&logo=railway&logoColor=white)](https://grooveforge-production.up.railway.app/health)
+[![ElevenLabs](https://img.shields.io/badge/ElevenLabs%20Music%20API-FF6B35?style=flat-square&logoColor=white)](https://elevenlabs.io)
+[![Turbopuffer](https://img.shields.io/badge/Turbopuffer-Vector%20DB-7C3AED?style=flat-square&logoColor=white)](https://turbopuffer.com)
+[![Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash-4285F4?style=flat-square&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![ElevenHacks](https://img.shields.io/badge/Built%20for-ElevenHacks-FF6B35?style=flat-square&logoColor=white)](https://elevenlabs.io)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 
 > Every musician has a tune in mind.
 >
