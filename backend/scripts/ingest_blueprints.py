@@ -15,6 +15,7 @@ Usage:
 """
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -26,7 +27,19 @@ log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
-PG_URL = "postgresql://paddy:paddy-postgres@localhost:5432/GrooveForge"
+
+
+def _pg_url() -> str:
+    if url := os.environ.get("POSTGRES_URL"):
+        return url
+    env_path = ROOT / "backend" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("POSTGRES_URL="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    raise RuntimeError("POSTGRES_URL not set")
+
+PG_URL = _pg_url()
 
 # ---------------------------------------------------------------------------
 # Tag classification vocabulary
