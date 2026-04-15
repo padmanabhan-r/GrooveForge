@@ -5,6 +5,7 @@ CLAUDE.md
 data/
 !frontend/src/data/
 tasks/
+.remember/
 
 # Frontend build artifacts & deps
 frontend/node_modules/
