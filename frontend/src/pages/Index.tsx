@@ -316,7 +316,7 @@ const Index = () => {
           </div>
 
           {/* Right: blueprint selection deck */}
-          {mode !== 'history' && !generationResult && <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-y-auto">
+          {mode !== 'history' && !generationResult && <aside className="glass-panel flex h-full min-h-[420px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,32,0.88),rgba(8,12,24,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.32)] overflow-hidden">
 
             {/* State 2: blueprint selection */}
             {searchResults && (
@@ -364,7 +364,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <div className="mt-3 flex flex-col gap-1.5 flex-1">
+                <div className="mt-3 flex flex-col gap-1.5 flex-1 overflow-y-auto">
                   {searchResults.blueprints.map((bp, i) => (
                     <BlueprintCard
                       key={bp.id}
