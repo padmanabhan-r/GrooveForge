@@ -32,7 +32,6 @@
 - [Architecture](ARCHITECTURE.md)
 - [Datasets](#datasets)
 - [Data Pipeline](#data-pipeline)
-- [Blueprint Schema](#blueprint-schema)
 - [Generation Modes](#generation-modes)
 - [Tech Stack](#tech-stack)
 - [Screenshots](#screenshots)
@@ -130,14 +129,14 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram and endpoint 
 
 ## Datasets
 
-GrooveForge's blueprint index is built on four open datasets, combined into ~620K indexed tracks. Only structured metadata and derived features are used — no audio files are stored or processed.
+GrooveForge's blueprint index is built on four open datasets. Only structured metadata and derived features are used — no audio files are stored or processed.
 
 | Dataset | Size | What it contributes |
 |---------|------|---------------------|
-| **Million Song Dataset (MSD)** | ~1M tracks | The backbone. Provides BPM, key, mode, loudness, artist familiarity, and release year for a million songs. Loaded from `track_metadata.db` (SQLite) and `msd_summary_file.h5` (HDF5 audio features), merged on track ID into PostgreSQL. |
-| **LP-MusicCaps-MSD** | ~513K tracks | MSD tracks enriched with human-written captions from the MusicCaps annotation project. The `caption_summary` and `caption_writing` fields provide rich natural-language descriptions of mood, texture, instrumentation, and genre — the primary retrieval anchor for each blueprint's `text_description`. |
-| **Free Music Archive (FMA)** | ~106K tracks | Creative Commons licensed tracks with genre labels, Echonest audio features (valence, energy, danceability, instrumentalness, acousticness), and track-level metadata. Covers a wide range of independent and niche genres not well represented in MSD. |
-| **MusicCaps** | ~5.5K tracks | A high-quality, human-annotated evaluation set from Google DeepMind. Used to validate caption quality and tag vocabulary — not a primary source of indexed blueprints, but instrumental in shaping the genre/mood classification vocabulary. |
+| **Million Song Dataset (MSD)** | ~1M tracks | The backbone. Provides BPM, key, mode, loudness, artist familiarity, and release year for a million songs. |
+| **LP-MusicCaps-MSD** | ~513K tracks | MSD tracks enriched with human-written captions from the MusicCaps annotation project. It provides rich natural-language descriptions of mood, texture, instrumentation, and genre — the primary retrieval anchor for each blueprint's `text_description`. |
+| **Free Music Archive (FMA)** | ~106K tracks | Creative Commons licensed tracks with genre labels, Echonest audio features (valence, energy, danceability, instrumentalness, acousticness), and track-level metadata. Covers a wide range of independent and niche genres. |
+| **MusicCaps** | ~5.5K tracks | A high-quality, human-annotated evaluation set from Google DeepMind. Used to validate caption quality and tag vocabulary — but instrumental in shaping the genre/mood classification vocabulary. |
 
 Together these datasets cover mainstream, indie, electronic, classical, world music, and everything in between — giving retrieval broad coverage across moods, genres, keys, and tempos.
 
@@ -199,33 +198,6 @@ embed_blueprints.py
 - Checkpointed: progress saved to `data/.embed_checkpoints/` so a killed run resumes from the last successful batch
 
 Both namespaces are queried concurrently at runtime via `asyncio.gather`. Results are merged with **Reciprocal Rank Fusion (RRF, k=60)**.
-
----
-
-## Blueprint Schema
-
-Each indexed record is a **musical blueprint** — a structured metadata payload with a natural-language description as the retrieval anchor:
-
-```json
-{
-  "id": "track_00123",
-  "source_dataset": "LP-MusicCaps-MSD",
-  "artist": "Example Artist",
-  "genre": "synth-pop",
-  "subgenre": "dream pop",
-  "bpm": 118,
-  "key": "C",
-  "mode": "minor",
-  "energy": 0.82,
-  "acousticness": 0.11,
-  "instrumentation": ["synth pads", "drum machine", "bass synth"],
-  "themes": ["city", "night", "loneliness"],
-  "vocal_type": "female vocals",
-  "text_description": "A moody synth-pop track in C minor at 118 BPM with shimmering pads, pulsing bass, high energy, and lyrics about city lights and loneliness."
-}
-```
-
-**Artist firewall:** Artist names and song titles from retrieved blueprints are **never** passed to Gemini or ElevenLabs. Only derived traits (genre, BPM, key, mood, instrumentation, energy) are used.
 
 ---
 
