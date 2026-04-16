@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     active_ns_lp: str = "lp_msd_minilm"
     active_ns_fma: str = "fma_minilm"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

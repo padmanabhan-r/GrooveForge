@@ -364,7 +364,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <div className="mt-3 flex flex-col gap-1.5 flex-1 overflow-y-auto">
+                <div className="mt-3 flex flex-col gap-1.5 flex-1 overflow-y-auto min-h-0">
                   {searchResults.blueprints.map((bp, i) => (
                     <BlueprintCard
                       key={bp.id}
@@ -377,7 +377,7 @@ const Index = () => {
                   ))}
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   {/* Generation mode toggle */}
                   <div>
                     <p className="text-[9px] uppercase tracking-[0.22em] text-white/38 mb-1.5">Generation Mode</p>
