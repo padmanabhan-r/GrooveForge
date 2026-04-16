@@ -100,3 +100,25 @@ Every track generated is saved locally (localStorage). Replay any track, rename 
 
 ### Removed
 - **API Reference** section from README (migrated to ARCHITECTURE.md)
+
+---
+
+## [1.2.0] — 2026-04-16
+
+### Added
+- **Datasets section** in README — LP-MusicCaps-MSD (513K), FMA (106K), MSD full (1M), MusicCaps (5.5K) with per-dataset contribution descriptions
+- **Copyright-Safe by Design section** — documents the four-layer safety approach: metadata-only, artist/title firewall, `text_description` excluded from LLM context, original output from ElevenLabs
+- **Generated History** — every track saved to localStorage; replay, rename, or download MP3 across sessions
+- **Track delete** — remove individual entries from generated history
+
+### Changed
+- **Sound Match mode** clarified: accepts a song played to the microphone only — not humming, naming, or recording original audio. Artist name and song title are extracted by Gemini locally and never sent to ElevenLabs; only derived sonic traits (BPM, key, mood, texture, instrumentation) drive retrieval and generation
+- **Embedding split**: offline pipeline uses `sentence-transformers/all-MiniLM-L6-v2` locally on CPU (~1K vecs/sec, zero API cost for 620K+ records); query-time embedding served via OpenRouter — identical 384-dim L2-normalized vectors, no model weights bundled in the Railway container
+- **Data pipeline section** condensed — removed duplicate code block, tightened PostgreSQL rationale to two sentences, collapsed embedding sub-bullets into a single line
+- **Blueprint Schema section** removed from README — schema is canonical in `CLAUDE.md`
+- **README badges** switched to `flat-square` style
+- **License** settled at CC BY 4.0 (reverted from Apache 2.0)
+
+### Fixed
+- Generate button stayed hidden when the blueprint list grew long — list is now scrollable, button always visible
+- Hardcoded PostgreSQL URL removed from `load_msd_full.py` and `ingest_blueprints.py`; scripts now read `POSTGRES_URL` from environment
