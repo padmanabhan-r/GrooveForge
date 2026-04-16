@@ -289,11 +289,9 @@ No copyrighted material ever reaches ElevenLabs — by design, not accident.
 ## License
 
 <p>
-  <a href="https://creativecommons.org/licenses/by/4.0/">
-    <img src="https://licensebuttons.net/l/by/4.0/88x31.png" alt="CC BY 4.0" />
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License" />
   </a>
 </p>
 
-This project is licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
-
-You are free to share and adapt the material for any purpose, even commercially, as long as you give appropriate credit.
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
