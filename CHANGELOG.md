@@ -122,3 +122,6 @@ Every track generated is saved locally (localStorage). Replay any track, rename 
 ### Fixed
 - Generate button stayed hidden when the blueprint list grew long — list is now scrollable, button always visible
 - Hardcoded PostgreSQL URL removed from `load_msd_full.py` and `ingest_blueprints.py`; scripts now read `POSTGRES_URL` from environment
+- Blueprint list scroll broken — added `min-h-0` to the flex child so `overflow-y-auto` takes effect
+- `pydantic-settings` rejected `POSTGRES_URL` from `.env` with `extra_forbidden` — added `extra="ignore"` to `Settings` so pipeline-only env vars don't break API startup
+- Added visual border separator between the blueprint list and generation controls
