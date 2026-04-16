@@ -45,16 +45,12 @@ Both modes support **Review Before Generate** — a dry-run that shows you the e
 
 The blueprint index was built in three offline stages:
 
-**Stage 1 — Raw data → PostgreSQL**
-- `load_msd_full.py`: MSD SQLite (1M tracks) + HDF5 (tempo/key/mode/loudness) → `msd_songs` table
-- Views `lp_musiccaps_msd_v` and `fma_all_v` sit above the raw tables, exposing structured columns
-
-**Stage 2 — PostgreSQL views → Blueprint Parquets**
-- `ingest_blueprints.py`: `lp_musiccaps_msd_v` (513,977 rows) → `blueprints_lp_msd.parquet`; `fma_all_v` (106,574 rows) → `blueprints_fma.parquet`
-- For MSD: tags parsed into genre/mood/themes via vocabulary sets; vocal type inferred from tag strings; energy derived from loudness; `text` field assembled from captions + tags + key/mode/BPM + artist
+**Stage 1 — Raw datasets → Blueprint Parquets**
+- `ingest_blueprints.py`: LP-MusicCaps-MSD (513,977 tracks) → `blueprints_lp_msd.parquet`; FMA (106,574 tracks) → `blueprints_fma.parquet`
+- For MSD: tags parsed into genre/mood/themes via vocabulary sets; vocal type inferred from tag strings; energy derived from loudness; `text` field assembled from captions + tags + key/mode/BPM
 - For FMA: genre from `genre_top`; mood from echonest valence threshold; vocal type from instrumentalness threshold
 
-**Stage 3 — Parquets → Turbopuffer**
+**Stage 2 — Parquets → Turbopuffer**
 - `embed_blueprints.py`: `sentence-transformers/all-MiniLM-L6-v2` embedding (384-dim, L2-normalized); 256 rows per encode, 500 rows per upsert; checkpointed to `data/.embed_checkpoints/`
 - Schema: `text` (full-text search enabled), plus filterable string and numeric attributes
 - Two namespaces: `lp_msd_minilm` (513,977 records) + `fma_minilm` (106,574 records)
@@ -114,14 +110,13 @@ Every track generated is saved locally (localStorage). Replay any track, rename 
 ### Changed
 - **Sound Match mode** clarified: accepts a song played to the microphone only — not humming, naming, or recording original audio. Artist name and song title are extracted by Gemini locally and never sent to ElevenLabs; only derived sonic traits (BPM, key, mood, texture, instrumentation) drive retrieval and generation
 - **Embedding split**: offline pipeline uses `sentence-transformers/all-MiniLM-L6-v2` locally on CPU (~1K vecs/sec, zero API cost for 620K+ records); query-time embedding served via OpenRouter — identical 384-dim L2-normalized vectors, no model weights bundled in the Railway container
-- **Data pipeline section** condensed — removed duplicate code block, tightened PostgreSQL rationale to two sentences, collapsed embedding sub-bullets into a single line
+- **Data pipeline section** condensed — collapsed to two stages (datasets → parquets → Turbopuffer), tightened embedding description
 - **Blueprint Schema section** removed from README — schema is canonical in `CLAUDE.md`
 - **README badges** switched to `flat-square` style
 - **License** settled at CC BY 4.0 (reverted from Apache 2.0)
 
 ### Fixed
 - Generate button stayed hidden when the blueprint list grew long — list is now scrollable, button always visible
-- Hardcoded PostgreSQL URL removed from `load_msd_full.py` and `ingest_blueprints.py`; scripts now read `POSTGRES_URL` from environment
 - Blueprint list scroll broken — added `min-h-0` to the flex child so `overflow-y-auto` takes effect
-- `pydantic-settings` rejected `POSTGRES_URL` from `.env` with `extra_forbidden` — added `extra="ignore"` to `Settings` so pipeline-only env vars don't break API startup
+- `pydantic-settings` rejected unknown env vars with `extra_forbidden` — added `extra="ignore"` to `Settings`
 - Added visual border separator between the blueprint list and generation controls

@@ -146,43 +146,26 @@ Together these datasets cover mainstream, indie, electronic, classical, world mu
 
 The blueprint index was built in three offline stages. All scripts live in `backend/scripts/`.
 
-### Stage 1 — Raw data → PostgreSQL
-
-```
-load_msd_full.py
-  MSD SQLite (track_metadata.db, 1M tracks)          → msd_songs table
-       + HDF5 (msd_summary_file.h5, tempo/key/mode/loudness)
-```
-
-```python
-# backend/scripts/load_msd_full.py
-sqlite_conn → track_metadata.db (1M rows, basic metadata)
-h5py.File   → msd_summary_file.h5 (audio features)
-             → merged on track_id → PostgreSQL msd_songs table
-```
-
-**Why PostgreSQL?** The raw MSD data arrives as SQLite + HDF5 files and FMA as loose CSVs — each in its own shape, with different column names, missing values, and inconsistent encodings. PostgreSQL became the central staging area where all sources land together, letting us explore and understand the data with SQL: check coverage of BPM vs key vs mood fields, identify null/out-of-range values, normalize genre vocabularies, join MusicCaps captions onto MSD tracks, and incrementally clean up rows. Only once the data was well-understood and shaped correctly were the final views (`lp_musiccaps_msd_v`, `fma_all_v`) defined — these sit above the raw tables and expose the exact structured columns used by the ingest scripts downstream. PostgreSQL was the right choice for data preparation; Turbopuffer handles the production retrieval load.
-
-### Stage 2 — PostgreSQL views → Blueprint Parquets
+### Stage 1 — Raw datasets → Blueprint Parquets
 
 ```
 ingest_blueprints.py
-  lp_musiccaps_msd_v (513,977 rows)  → data/blueprints_lp_msd.parquet
-  fma_all_v          (106,574 rows)  → data/blueprints_fma.parquet
+  LP-MusicCaps-MSD (513,977 tracks)  → data/blueprints_lp_msd.parquet
+  FMA              (106,574 tracks)  → data/blueprints_fma.parquet
 ```
 
-For `lp_musiccaps_msd_v`:
+For LP-MusicCaps-MSD:
 - Tags parsed and classified into genre / mood / themes via vocabulary sets
 - Vocal type inferred from tag strings (`female vocal`, `male vocal`, `instrumental`)
 - Energy derived from loudness: `(loudness + 25) / 25`, clamped to `[0, 1]`
-- `text` field assembled from `caption_summary` + `caption_writing` + tags + key/mode/BPM + artist name
+- `text` field assembled from `caption_summary` + `caption_writing` + tags + key/mode/BPM
 
-For `fma_all_v`:
+For FMA:
 - Genre from `genre_top`; mood derived from echonest valence threshold (>0.6 → upbeat, <0.3 → melancholic)
 - Vocal type from instrumentalness threshold (>0.8 → instrumental)
 - `text` field assembled from title + genre + descriptors + BPM + mood
 
-### Stage 3 — Parquets → Turbopuffer
+### Stage 2 — Parquets → Turbopuffer
 
 ```
 embed_blueprints.py
