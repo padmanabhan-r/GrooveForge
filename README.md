@@ -36,7 +36,6 @@
 - [Tech Stack](#tech-stack)
 - [Screenshots](#screenshots)
 - [Running Locally](#running-locally)
-- [Demo Vibes](#demo-vibes)
 - [Copyright-Safe by Design](#copyright-safe-by-design)
 
 ---
@@ -276,29 +275,14 @@ uv run python scripts/embed_blueprints.py    # embed + upsert into Turbopuffer
 
 ---
 
-## Demo Vibes
-
-| Vibe selection | Expected output |
-|---------------|----------------|
-| Moody · Synthwave · Instrumental · 110–130 BPM | Dark electronic, minor key, no vocals |
-| Upbeat · Pop · Female vocals · 120 BPM · Summer themes | Bright, major key, catchy hook |
-| Psychedelic · Indie · Guitar · 90–100 BPM | Hazy, reverb-heavy, mid-tempo |
-| Melancholic · Piano · Ballad · Slow | Sparse, cinematic, emotional |
-| High energy · Hip-hop · 140 BPM · Urban themes | Punchy, rhythmic, bass-forward |
-
----
-
 ## Copyright-Safe by Design
 
-GrooveForge is built from the ground up to ensure no copyrighted material ever reaches ElevenLabs. This is a deliberate, multi-layer design — not an afterthought.
+No copyrighted material ever reaches ElevenLabs — by design, not accident.
 
-**Metadata only, no audio.** The blueprint index is built entirely from structured features (BPM, key, mode, genre, energy, danceability) and human-written captions. No audio files are downloaded, stored, processed, or used at any stage. Sources — Million Song Dataset, Free Music Archive, MusicCaps, LP-MusicCaps-MSD — are used for their derived metadata only.
-
-**Artist and title firewall.** Even though retrieved blueprints carry artist names and track titles, these are stripped before anything is sent to Gemini or ElevenLabs. Only derived, non-attributable traits (genre, BPM, key, mood, instrumentation, energy level) flow into the generation prompt. There is no path by which a real artist name or song title can influence the output.
-
-**`text_description` excluded from LLM context.** The free-text description field in each blueprint is used for retrieval only (BM25 full-text search). It is never passed to Gemini as prompt context — because free-text fields may embed real artist or track references. Only structured numeric and categorical attributes are used when synthesizing the generation prompt.
-
-**Generated music is original.** The output is a brand-new composition from ElevenLabs Music API — not a copy, sample, or derivative of any indexed track. Blueprint retrieval shapes the *style* of the prompt; it does not reproduce any source material.
+- **Metadata only** — blueprints are structured features (BPM, key, genre, energy) and human-written captions. No audio is stored or processed.
+- **Artist & title firewall** — names and titles are stripped before anything reaches Gemini or ElevenLabs. Only derived traits flow into generation.
+- **`text_description` excluded from LLM context** — free-text fields stay retrieval-only (BM25); never passed to Gemini as they may embed real artist references.
+- **Original output** — ElevenLabs generates a brand-new composition. Blueprint retrieval shapes the style; it reproduces nothing.
 
 ---
 
